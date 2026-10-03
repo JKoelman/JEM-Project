@@ -268,6 +268,7 @@ class JemModelEvent extends JemModelAdmin
             }
 
             if (!JemHelperBackend::can('event', 'edit.created')) {
+                $form->removeField('created');
                 $form->setFieldAttribute('created_by', 'disabled', 'true');
                 $form->setFieldAttribute('created_by', 'filter', 'unset');
             }
