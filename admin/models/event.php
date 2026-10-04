@@ -244,23 +244,33 @@ class JemModelEvent extends JemModelAdmin
 
         if ($scope === 'backend') {
             $recordId = (int) $form->getValue('id');
-            $categoryIds = array_values(array_unique(array_filter(array_map(
-                'intval',
-                (array) $form->getValue('cats')
-            ))));
+            $categoryIds = $recordId > 0
+                ? $this->getEventCategoryIds($recordId)
+                : array_values(array_unique(array_filter(array_map(
+                    'intval',
+                    (array) $form->getValue('cats')
+                ))));
             $stateRecord = null;
+            $canEditState = false;
 
             if ($recordId > 0) {
-                $stateRecord = (object) array(
-                    'id' => $recordId,
-                    'created_by' => (int) $form->getValue('created_by'),
-                    'cats' => $categoryIds,
-                );
-            }
+                $storedEvent = $this->getTable();
 
-            $canEditState = $recordId > 0
-                ? JemHelperBackend::canEventCategories('edit.state', $categoryIds, $stateRecord)
-                : JemHelperBackend::canManageAnyEvent('edit.state');
+                if ($storedEvent->load($recordId)) {
+                    $stateRecord = (object) array(
+                        'id' => $recordId,
+                        'created_by' => (int) $storedEvent->created_by,
+                        'cats' => $categoryIds,
+                    );
+                    $canEditState = JemHelperBackend::canEventCategories(
+                        'edit.state',
+                        $categoryIds,
+                        $stateRecord
+                    );
+                }
+            } else {
+                $canEditState = JemHelperBackend::canManageAnyEvent('edit.state');
+            }
 
             if (!$canEditState) {
                 foreach (array('featured', 'ordering', 'publish_up', 'publish_down', 'published') as $fieldName) {
@@ -270,6 +280,7 @@ class JemModelEvent extends JemModelAdmin
             }
 
             if (!JemHelperBackend::can('event', 'edit.created')) {
+                $form->removeField('created');
                 $form->setFieldAttribute('created_by', 'disabled', 'true');
                 $form->setFieldAttribute('created_by', 'filter', 'unset');
             }
@@ -756,6 +767,39 @@ class JemModelEvent extends JemModelAdmin
         }
 
         // Variables
+        // Existing-event authorization must be based on stored provenance,
+        // never on submitted owner/category values.
+        if ($backend && !$new) {
+            $storedEventId = (int) ($data['id'] ?? 0);
+            $storedCategoryIds = $this->getEventCategoryIds($storedEventId);
+            $storedEvent = $this->getTable();
+
+            if (!$storedEventId || !$storedEvent->load($storedEventId)) {
+                $this->setError(Text::_('JERROR_ALERTNOAUTHOR'));
+                return false;
+            }
+
+            $storedStateRecord = (object) array(
+                'id' => $storedEventId,
+                'created_by' => (int) $storedEvent->created_by,
+                'cats' => $storedCategoryIds,
+            );
+
+            $canEditStoredState = JemHelperBackend::canEventCategories(
+                'edit.state',
+                $storedCategoryIds,
+                $storedStateRecord
+            );
+
+            if (!$canEditStoredState) {
+                $data['cats'] = $storedCategoryIds;
+
+                foreach (array('featured', 'ordering', 'publish_up', 'publish_down', 'published') as $stateField) {
+                    unset($data[$stateField]);
+                }
+            }
+        }
+
         $cats                 = $this->normaliseEventCategoryIds($data['cats'] ?? array());
         if (empty($cats) || !$this->validateEventCategoryIds($cats, $backend, $new)) {
             $this->setError(Text::_('COM_JEM_EVENT_ERROR_STORE_CATEGORIES'));
