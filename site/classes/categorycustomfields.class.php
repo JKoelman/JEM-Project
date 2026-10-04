@@ -1099,7 +1099,11 @@ class JemCategoryCustomFields
     {
         $fieldId = (int) $field->id;
         $value = trim((string) $field->value);
-        $label = Text::_((string) ($field->label ?? $field->name));
+        $labelSource = trim((string) ($field->label ?? ''));
+        if ($labelSource === '') {
+            $labelSource = trim((string) ($field->title ?? $field->name ?? ''));
+        }
+        $label = Text::_($labelSource);
         $prefix = Text::plural((string) $field->params->get('prefix', ''), $value);
         $suffix = Text::plural((string) $field->params->get('suffix', ''), $value);
         $class = htmlspecialchars($classPrefix . $fieldId, ENT_QUOTES, 'UTF-8');
@@ -1135,7 +1139,11 @@ class JemCategoryCustomFields
     {
         $fieldId = (int) $field->id;
         $value = trim((string) $field->value);
-        $label = Text::_((string) ($field->label ?? $field->name));
+        $labelSource = trim((string) ($field->label ?? ''));
+        if ($labelSource === '') {
+            $labelSource = trim((string) ($field->title ?? $field->name ?? ''));
+        }
+        $label = Text::_($labelSource);
         $prefix = Text::plural((string) $field->params->get('prefix', ''), $value);
         $suffix = Text::plural((string) $field->params->get('suffix', ''), $value);
         $class = htmlspecialchars($classPrefix . $fieldId, ENT_QUOTES, 'UTF-8');
