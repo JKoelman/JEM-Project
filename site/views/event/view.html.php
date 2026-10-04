@@ -500,6 +500,8 @@ class JemViewEvent extends JemView
         $this->_prepareDocument();
         $this->prepareEventStructuredData($item, $document, $app);
 
+        $dispatcher->triggerEvent('onJemPrepareEventView', array(&$this));
+
         parent::display($tpl);
     }
 
