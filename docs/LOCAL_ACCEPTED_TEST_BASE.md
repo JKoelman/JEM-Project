@@ -27,13 +27,23 @@ Branch:
 integration/jem-510-local-accepted
 ```
 
-Current upstream base:
+Current accepted upstream base:
 
 ```text
 jemproject/JEM-Project
 JEM-5.1.0-dev-integration
 fc65b276657a66ebdda1c5e008bb26e89ac1768c
 ```
+
+Upstream observation after this preservation run:
+
+```text
+current upstream head: 4e3e54ca581c574843f268931d48db4f4f37da63
+parent:                fc65b276657a66ebdda1c5e008bb26e89ac1768c
+change:                PDF settings regression fix, unrelated to #2132
+```
+
+The accepted runtime gate above was executed against the current local-accepted baseline based on `fc65b276...`. Before starting the next product slice, refresh the local-accepted branch onto the newer upstream head and rerun the preservation gate.
 
 ## Accepted local deltas
 
@@ -166,8 +176,24 @@ The gate includes the accepted regression suites for:
 
 - #2353 resource-aware ACL;
 - #2352 category-aware custom fields;
+- #2351 Include Subcategories;
+- #2356 Event timezone display;
+- #1949 module CSS override migration;
+- #2132 age classification core;
+- #2132 DOB/event-date/registration/bounded-range behaviour;
 - #2339 Eventslist filters;
 - JEM Presentation native-hook integration.
+
+Latest authoritative preservation run:
+
+```text
+2026-10-05
+Target: Joomla6Demo ONLY
+31/31 Playwright tests GREEN
+Native event-view hook contract GREEN
+#2132 focused acceptance: 11/11 GREEN
+Overall gate: GREEN
+```
 
 Runtime rules:
 
