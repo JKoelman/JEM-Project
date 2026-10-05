@@ -41,8 +41,7 @@ $selectedContacts = array_map('intval', $filterData['contact_ids'] ?? array());
                             </select>
                         <?php elseif ($isContact) : ?>
                             <label for="filter_contacts"><?php echo $this->escape($label); ?></label>
-                            <select name="filter_contacts[]" id="filter_contacts" class="form-select"
-                                multiple size="5" aria-describedby="filter_contacts_hint">
+                            <select name="filter_contacts[]" id="filter_contacts" class="form-select">
                                 <option value=""<?php echo empty($selectedContacts) ? ' selected' : ''; ?>><?php echo $this->escape(Text::_('COM_JEM_EVENT_FILTER_ALL_CONTACTS')); ?></option>
                                 <?php foreach ($filterData['contact_options'] as $option) : ?>
                                     <option value="<?php echo (int) $option->id; ?>"<?php echo in_array((int) $option->id, $selectedContacts, true) ? ' selected' : ''; ?>>
@@ -50,7 +49,6 @@ $selectedContacts = array_map('intval', $filterData['contact_ids'] ?? array());
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <div id="filter_contacts_hint" class="form-text"><?php echo $this->escape(Text::_('COM_JEM_EVENT_FILTER_CONTACT_MULTIPLE_HINT')); ?></div>
                         <?php elseif ($isCustom) : ?>
                             <label for="<?php echo $this->escape($inputId); ?>"><?php echo $this->escape($label); ?></label>
                             <?php if ($row['custom_type'] === JemCustomFields::TYPE_LIST) : ?>
