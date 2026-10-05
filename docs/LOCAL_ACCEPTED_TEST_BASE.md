@@ -193,10 +193,14 @@ Current refresh status:
 ```text
 Upstream base: 4e3e54ca581c574843f268931d48db4f4f37da63
 Local accepted deltas: reapplied
-Preservation gate: PENDING
+Install/update smoke: 3/3 GREEN
+Targeted upstream PDF regression: 1/1 GREEN
+Targeted refresh gate: 4/4 GREEN
+Full preservation gate: not rerun for this one-commit orthogonal upstream refresh
+Previous full preservation: 31/31 GREEN + native hook contract GREEN
 ```
 
-Do not use this refreshed baseline for new product acceptance until the preservation gate is GREEN again.
+The refreshed baseline is eligible for promotion to `integration/jem-510-local-accepted`. Full preservation remains scheduled for the normal wider preservation cadence or a larger/conflicting upstream change.
 
 Runtime rules:
 
