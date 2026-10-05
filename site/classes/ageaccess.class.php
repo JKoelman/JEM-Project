@@ -230,6 +230,15 @@ final class JemAgeAccess
         }
 
         $value = trim((string) $value);
+
+        // Joomla's standard User - Profile plugin stores DOB as
+        // "Y-m-d H:i:s". JEM age decisions are date-based, so retain the
+        // canonical calendar date while still accepting existing date-only
+        // profile values.
+        if (preg_match('/^(\\d{4}-\\d{2}-\\d{2})[ T]\\d{2}:\\d{2}:\\d{2}$/D', $value, $matches)) {
+            $value = $matches[1];
+        }
+
         $birthDate = self::createDate($value);
         $today = self::createDate(Factory::getDate()->format('Y-m-d'));
         self::$birthDates[$userId] = $birthDate && $today && $birthDate <= $today ? $value : null;
