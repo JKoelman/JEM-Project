@@ -70,7 +70,7 @@ $profileLabel = Text::_('COM_JEM_OPERATING_PROFILE_' . strtoupper($featurePolicy
                         <div class="form-text"><?php echo Text::_('COM_JEM_OPERATING_PROFILE_INTRO'); ?></div>
                     <?php endif; ?>
                 </div>
-                <a class="btn btn-sm btn-outline-primary" href="index.php?option=com_jem&amp;view=settings"><?php echo Text::_('COM_JEM_OPERATING_PROFILE_CONFIGURE'); ?></a>
+                <a class="btn btn-sm btn-outline-primary" href="index.php?option=com_jem&amp;view=settings#operating-profile"><?php echo Text::_('COM_JEM_OPERATING_PROFILE_CONFIGURE'); ?></a>
             </section>
         <?php endif; ?>
         <div class="cpanel jem-wei-menus">
