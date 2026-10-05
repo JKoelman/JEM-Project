@@ -101,6 +101,7 @@ At the current base:
 - upstream already contains its own #2352 fix for custom-field labels and shared frontend editor model loading; the old local #2352 patch is not re-applied;
 - upstream contains the #2351 Events List `Include Subcategories` recursion fix; focused JEM 5.1 acceptance confirmed HTTP 200, child-category Event rendering and no browser errors;
 - upstream contains #2356 global/per-event Event timezone visibility controls; focused JEM 5.1 acceptance confirmed global/event precedence, classic/responsive details/compact parity, untimed-event suppression, unchanged JSON-LD `startDate`, and unchanged iCalendar `DTSTART`/`DTEND` semantics when the human-readable timezone is hidden;
+- upstream contains the #1949 JEM 5.1 module CSS override rework; local acceptance confirmed current Teaser/Wide stylesheet names at runtime, CSS Manager legacy override discovery, explicit safe migration, conflict preservation, and no overwrite of an existing canonical target;
 - #2339's compact single-choice Contact selector is still missing upstream and remains a local accepted delta;
 - the native `onJemPrepareEventView` extension hook is still missing upstream and remains a local accepted delta.
 
