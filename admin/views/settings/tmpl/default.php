@@ -74,6 +74,21 @@ jQuery(document).ready(function($) {
                 <div class="col-md-12">
                     <?php echo HTMLHelper::_('uitab.startTabSet', 'settings-pane', ['active' => 'parameters', 'recall' => false, 'breakpoint' => 768]); ?>
 
+                    <?php echo HTMLHelper::_('uitab.addTab', 'settings-pane', 'operating-profile', Text::_('COM_JEM_OPERATING_PROFILE')); ?>
+                        <fieldset class="adminform">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h2 class="h4"><?php echo Text::_('COM_JEM_OPERATING_PROFILE_QUESTION'); ?></h2>
+                                    <p class="form-text"><?php echo Text::_('COM_JEM_OPERATING_PROFILE_INTRO'); ?></p>
+                                    <?php echo $this->form->renderField('operating_profile'); ?>
+                                    <?php echo $this->form->getInput('operating_profile_configured'); ?>
+                                    <p class="form-text mb-0"><?php echo Text::_('COM_JEM_OPERATING_PROFILE_SAFE_CHANGE'); ?></p>
+                                </div>
+                            </div>
+                        </fieldset>
+                    <?php echo HTMLHelper::_('uitab.endTab'); ?>
+                    <div class="clr"></div>
+
                     <?php echo HTMLHelper::_('uitab.addTab', 'settings-pane', 'parameters', Text::_('COM_JEM_GLOBAL_PARAMETERS')); ?>
                         <fieldset class="adminform">
                             <?php echo $this->loadTemplate('parameters'); ?>
