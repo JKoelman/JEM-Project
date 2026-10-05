@@ -99,6 +99,7 @@ At the current base:
 
 - upstream contains the #2353 stored-resource ACL fix; the former local backend/frontend #2353 patches are not re-applied;
 - upstream already contains its own #2352 fix for custom-field labels and shared frontend editor model loading; the old local #2352 patch is not re-applied;
+- upstream contains the #2351 Events List `Include Subcategories` recursion fix; focused JEM 5.1 acceptance confirmed HTTP 200, child-category Event rendering and no browser errors;
 - #2339's compact single-choice Contact selector is still missing upstream and remains a local accepted delta;
 - the native `onJemPrepareEventView` extension hook is still missing upstream and remains a local accepted delta.
 
