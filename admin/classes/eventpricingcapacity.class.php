@@ -313,7 +313,13 @@ class JemEventPricingCapacityService
             : $storedSnapshot;
         $snapshotCapacity = self::snapshotCapacity($snapshot);
         $eventCapacity = self::normaliseUnsignedInteger($data['maxplaces'] ?? 0, true);
-        if ($capacityMode !== 'classic' && $eventCapacity < 1 && !$storedSnapshot) {
+        if ($capacityMode === 'configured' && ($reload || ($eventCapacity < 1 && !$storedSnapshot))) {
+            // Configured global capacity is derived from the selected venue snapshot.
+            // An explicit reload must therefore refresh the derived event capacity too,
+            // otherwise a venue capacity decrease leaves stale maxplaces blocking reload.
+            $eventCapacity = $snapshotCapacity;
+            $data['maxplaces'] = $eventCapacity;
+        } elseif ($capacityMode !== 'classic' && $eventCapacity < 1 && !$storedSnapshot) {
             $eventCapacity = $snapshotCapacity;
             $data['maxplaces'] = $eventCapacity;
         }
