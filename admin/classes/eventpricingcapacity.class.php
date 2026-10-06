@@ -329,7 +329,26 @@ class JemEventPricingCapacityService
         if ($eventCapacity > 0 && ($eventCapacity > $snapshotCapacity
             || $eventCapacity > (int) ($snapshot['profile_capacity'] ?? 0)
             || $eventCapacity > (int) $requirements['venue_capacity'])) {
-            throw new InvalidArgumentException(Text::_('COM_JEM_EVENT_PRICING_ERROR_CAPACITY_LIMIT'));
+            $diagnostic = json_encode(array(
+                'reload' => $reload ? 1 : 0,
+                'allocation_mode' => $allocationMode,
+                'capacity_mode' => $capacityMode,
+                'event_capacity' => $eventCapacity,
+                'data_maxplaces' => (int) ($data['maxplaces'] ?? 0),
+                'snapshot_capacity' => $snapshotCapacity,
+                'snapshot_profile_capacity' => (int) ($snapshot['profile_capacity'] ?? 0),
+                'snapshot_profile_revision' => (int) ($snapshot['profile_revision'] ?? 0),
+                'snapshot_layout_capacity' => (int) ($snapshot['spaces'][0]['layout']['capacity'] ?? 0),
+                'venue_capacity' => (int) $requirements['venue_capacity'],
+                'requirements_profile_capacity' => (int) $requirements['profile_capacity'],
+                'submitted_configuration_key' => $submittedConfigurationKey,
+                'submitted_assignment_ids' => $submittedAssignmentIds,
+                'stored_assignment_ids' => $storedAssignmentIds,
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            throw new InvalidArgumentException(
+                Text::_('COM_JEM_EVENT_PRICING_ERROR_CAPACITY_LIMIT')
+                . ' [JEM 4D-B DIAG ' . $diagnostic . ']'
+            );
         }
 
         $data['venue_profile_id'] = (int) $snapshot['profile_id'];
