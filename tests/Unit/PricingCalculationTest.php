@@ -77,6 +77,81 @@ final class PricingCalculationTest extends TestCase
         self::assertSame('33.00', $result->lineGross->decimal());
     }
 
+
+    public function testTwentyOnePercentExcludedCalculationMatchesAdminPreviewContract(): void
+    {
+        $result = JemTaxCalculator::calculate(
+            JemMoney::fromDecimal('12.00', 'EUR'),
+            new JemTaxPolicy(JemTaxPolicy::STANDARD, '21.00', false),
+            1
+        );
+
+        self::assertSame('12.00', $result->unitNet->decimal());
+        self::assertSame('2.52', $result->unitTax->decimal());
+        self::assertSame('14.52', $result->unitGross->decimal());
+        self::assertSame('12.00', $result->lineNet->decimal());
+        self::assertSame('2.52', $result->lineTax->decimal());
+        self::assertSame('14.52', $result->lineGross->decimal());
+    }
+
+    public function testLineLevelRoundingUsesTheLineTotalInsteadOfRoundedUnitTaxTimesQuantity(): void
+    {
+        $result = JemTaxCalculator::calculate(
+            JemMoney::fromDecimal('0.05', 'EUR'),
+            new JemTaxPolicy(JemTaxPolicy::REDUCED, '10.00', false),
+            3
+        );
+
+        self::assertSame('0.01', $result->unitTax->decimal());
+        self::assertSame('0.15', $result->lineNet->decimal());
+        self::assertSame('0.02', $result->lineTax->decimal());
+        self::assertSame('0.17', $result->lineGross->decimal());
+
+        self::assertNotSame(
+            $result->unitTax->multipliedBy(3)->decimal(),
+            $result->lineTax->decimal(),
+            'Line tax must be calculated from the exact line amount, not from a rounded unit-tax multiplication.'
+        );
+    }
+
+    public function testSummaryKeepsStandardReducedAndZeroRatedGroupsDistinct(): void
+    {
+        $groups = JemTaxCalculator::summarise(array(
+            JemTaxCalculator::calculate(
+                JemMoney::fromDecimal('12.00', 'EUR'),
+                new JemTaxPolicy(JemTaxPolicy::STANDARD, '21.00', true),
+                1
+            ),
+            JemTaxCalculator::calculate(
+                JemMoney::fromDecimal('10.00', 'EUR'),
+                new JemTaxPolicy(JemTaxPolicy::REDUCED, '9.00', false),
+                2
+            ),
+            JemTaxCalculator::calculate(
+                JemMoney::fromDecimal('5.00', 'EUR'),
+                new JemTaxPolicy(JemTaxPolicy::ZERO, '0.00', true),
+                1
+            ),
+        ));
+
+        self::assertSame(
+            array('reduced|9.00', 'standard|21.00', 'zero|0.00'),
+            array_keys($groups)
+        );
+
+        self::assertSame('20.00', $groups['reduced|9.00']['net']->decimal());
+        self::assertSame('1.80', $groups['reduced|9.00']['tax']->decimal());
+        self::assertSame('21.80', $groups['reduced|9.00']['gross']->decimal());
+
+        self::assertSame('9.92', $groups['standard|21.00']['net']->decimal());
+        self::assertSame('2.08', $groups['standard|21.00']['tax']->decimal());
+        self::assertSame('12.00', $groups['standard|21.00']['gross']->decimal());
+
+        self::assertSame('5.00', $groups['zero|0.00']['net']->decimal());
+        self::assertSame('0.00', $groups['zero|0.00']['tax']->decimal());
+        self::assertSame('5.00', $groups['zero|0.00']['gross']->decimal());
+    }
+
     public function testHalfCentRoundsAwayFromZero(): void
     {
         $result = JemTaxCalculator::calculate(
