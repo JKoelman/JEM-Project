@@ -35,7 +35,7 @@ JEM-5.1.0-dev-integration
 4e3e54ca581c574843f268931d48db4f4f37da63
 ```
 
-This refresh adds upstream's PDF-settings regression fix on top of the previously accepted `fc65b276...` base. The upstream change is orthogonal to the three local accepted product deltas listed below.
+This refresh adds upstream's PDF-settings regression fix on top of the previously accepted `fc65b276...` base. The upstream change is orthogonal to the local accepted product deltas listed below.
 
 ## Accepted local deltas
 
@@ -65,6 +65,29 @@ Integration commit:
 
 ```text
 f1621c0654bf208ddbf5e8e762fa860192d76328
+```
+### Upstream issue 2301 — Tax Rate validity date contract
+
+Accepted Point 4C contract:
+
+- Tax Rate validity fields use canonical ISO `%Y-%m-%d` in the administrator UI;
+- the Joomla calendar no longer translates those two fields to a locale-specific display/post format;
+- the UI contract now matches the strict `Y-m-d` validation in `jem_tax_rates.php`;
+- create/edit/filter/delete and semantic tax validation remain unchanged.
+
+Targeted acceptance:
+
+```text
+2026-10-06
+Joomla6Demo ONLY
+TAX2301-4C-100..106
+7/7 GREEN
+```
+
+Integration commit:
+
+```text
+7d01645002fc953ec6156921a6cf939a5fb6580f
 ```
 
 ### JEM Presentation native event-view hook
@@ -106,6 +129,7 @@ At the current base:
 - upstream contains the #1949 JEM 5.1 module CSS override rework; local acceptance confirmed current Teaser/Wide stylesheet names at runtime, CSS Manager legacy override discovery, explicit safe migration, conflict preservation, and no overwrite of an existing canonical target;
 - #2132 age access is locally accepted through the core assignment/intersection slice and DOB event-date boundary slice; local product fix commit 7e3f38a5 normalizes Joomla User - Profile DOB values stored as `Y-m-d H:i:s` before JEM age calculation;
 - #2339's compact single-choice Contact selector is still missing upstream and remains a local accepted delta;
+- Upstream issue 2301 Point 4C Tax Rate validity dates require the local canonical ISO calendar fix and remain a local accepted delta;
 - the native `onJemPrepareEventView` extension hook is still missing upstream and remains a local accepted delta.
 
 The related Playwright regressions remain part of the preservation gate.
@@ -188,19 +212,19 @@ Native event-view hook contract GREEN
 Overall gate: GREEN
 ```
 
-Current refresh status:
+Current accepted status:
 
 ```text
+2026-10-06
 Upstream base: 4e3e54ca581c574843f268931d48db4f4f37da63
-Local accepted deltas: reapplied
-Install/update smoke: 3/3 GREEN
-Targeted upstream PDF regression: 1/1 GREEN
-Targeted refresh gate: 4/4 GREEN
-Full preservation gate: not rerun for this one-commit orthogonal upstream refresh
-Previous full preservation: 31/31 GREEN + native hook contract GREEN
+Target: Joomla6Demo ONLY
+Upstream issue 2301 Point 4C targeted acceptance: 7/7 GREEN
+Full preservation: 32/32 Playwright tests GREEN
+Native event-view hook contract: GREEN
+Overall gate: GREEN
 ```
 
-The refreshed baseline is eligible for promotion to `integration/jem-510-local-accepted`. Full preservation remains scheduled for the normal wider preservation cadence or a larger/conflicting upstream change.
+The upstream issue 2301 ISO Tax Rate validity date delta passed targeted acceptance and the full local-accepted preservation gate before integration into `integration/jem-510-local-accepted`.
 
 Runtime rules:
 
