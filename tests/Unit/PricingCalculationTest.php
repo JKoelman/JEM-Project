@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 require_once JEM_TEST_ROOT . '/site/classes/money.class.php';
@@ -29,7 +30,7 @@ final class PricingCalculationTest extends TestCase
         self::assertSame('', JemMoney::currencySymbol('invalid', 'es-ES'));
     }
 
-    /** @dataProvider invalidMoneyProvider */
+    #[DataProvider('invalidMoneyProvider')]
     public function testMoneyRejectsInexactOrInvalidInput($amount): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -163,7 +164,7 @@ final class PricingCalculationTest extends TestCase
         self::assertSame('0.01', $result->unitTax->decimal());
     }
 
-    /** @dataProvider zeroSemanticTypeProvider */
+    #[DataProvider('zeroSemanticTypeProvider')]
     public function testNonTaxableSemanticTypesRemainDistinct(string $type): void
     {
         $result = JemTaxCalculator::calculate(
