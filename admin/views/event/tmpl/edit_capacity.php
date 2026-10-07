@@ -138,6 +138,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const assignmentIdsInput = document.getElementById('jform_venue_assignment_ids');
     const venueInput = document.getElementById('jform_locid_id');
     const reloadInput = document.getElementById('jform_reload_venue_capacity');
+    if (reloadInput) {
+        // The bound Joomla checkbox default may render as value="0" on edits.
+        // A checked reload must submit "1"; an unchecked checkbox submits nothing.
+        reloadInput.value = '1';
+    }
     const eventId = <?php echo (int) ($this->item->id ?? 0); ?>;
     const savedAssignmentIds = <?php echo json_encode(array_values(array_map('intval', $selectedAssignmentIds))); ?>;
     const savedSnapshotLabel = <?php echo json_encode(Text::_('COM_JEM_EVENT_VENUE_CONFIGURATION_SAVED')); ?>;
