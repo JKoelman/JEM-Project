@@ -436,6 +436,7 @@ class JemViewEvent extends JemView
         $this->pricingOptions = array();
         $this->pricingQuote = null;
         $this->pricingQuoteError = '';
+        $this->showPricingAvailability = false;
         $isPricedEvent = in_array(
             (string) ($item->pricing_mode ?? 'classic'),
             array('single', 'multiple', 'priced'),
@@ -445,6 +446,37 @@ class JemViewEvent extends JemView
             && $userId > 0
             && JemFeaturePolicy::current()->allows(JemFeaturePolicy::FEATURE_PRICING)) {
             $this->pricingOptions = $model->getPricingOptions((int) $item->id);
+
+            $showPricingAvailability = (int) $item->params->get('event_show_availability', -1);
+            if ($showPricingAvailability < 0) {
+                $showPricingAvailability = (int) $settings->get('event_show_availability', 0);
+            }
+            $this->showPricingAvailability = $showPricingAvailability === 1;
+
+            if ($this->showPricingAvailability && $this->pricingOptions) {
+                $priceIds = array_map(
+                    static fn (object $option): int => (int) $option->id,
+                    (array) $this->pricingOptions
+                );
+                $excludedRegisterId = is_object($registration)
+                    ? (int) ($registration->id ?? 0)
+                    : 0;
+                $availability = (new JemPricingQuoteService(
+                    Factory::getContainer()->get('DatabaseDriver')
+                ))->availability(
+                    (int) $item->id,
+                    $priceIds,
+                    $excludedRegisterId
+                );
+
+                foreach ($this->pricingOptions as $option) {
+                    $priceId = (int) $option->id;
+                    $option->remaining_availability = isset($availability[$priceId])
+                        ? (int) $availability[$priceId]['remaining']
+                        : null;
+                }
+            }
+
             $quoteKey = 'com_jem.pricing.quote.' . (int) $item->id;
             $errorKey = 'com_jem.pricing.quote.error.' . (int) $item->id;
             $this->pricingQuote = $app->getUserState($quoteKey);
