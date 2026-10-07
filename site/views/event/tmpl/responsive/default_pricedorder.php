@@ -127,6 +127,14 @@ $currency = strtoupper((string) ($this->item->currency ?? 'EUR'));
             $taxMinor = (int) round(((float) ($line['line_tax'] ?? 0)) * 100);
             $taxGroups[$rate] = ($taxGroups[$rate] ?? 0) + $taxMinor;
         }
+        $managementFee = is_array($this->pricingQuote['management_fee'] ?? null)
+            ? $this->pricingQuote['management_fee']
+            : null;
+        if ($managementFee) {
+            $feeRate = number_format((float) ($managementFee['tax_rate'] ?? 0), 2, '.', '');
+            $feeTaxMinor = (int) round(((float) ($managementFee['line_tax'] ?? 0)) * 100);
+            $taxGroups[$feeRate] = ($taxGroups[$feeRate] ?? 0) + $feeTaxMinor;
+        }
         krsort($taxGroups, SORT_NUMERIC);
         ?>
         <div class="jem-pricing-quote mt-3" data-jem-pricing-quote>
@@ -138,6 +146,20 @@ $currency = strtoupper((string) ($this->item->currency ?? 'EUR'));
                 <dd class="col-sm-6" data-jem-quote-subtotal><?php echo $this->escape($currency . ' ' . $this->pricingQuote['subtotal_net']); ?></dd>
                 <dt class="col-sm-6"><?php echo Text::_('COM_JEM_PRICING_TAX_TOTAL'); ?></dt>
                 <dd class="col-sm-6" data-jem-quote-tax><?php echo $this->escape($currency . ' ' . $this->pricingQuote['tax_total']); ?></dd>
+                <?php if ($managementFee) : ?>
+                    <dt class="col-sm-6"><?php echo Text::_('COM_JEM_PRICING_MANAGEMENT_FEE_NET'); ?></dt>
+                    <dd class="col-sm-6" data-jem-quote-management-fee-net>
+                        <?php echo $this->escape($currency . ' ' . (string) $managementFee['line_net']); ?>
+                    </dd>
+                    <dt class="col-sm-6"><?php echo Text::_('COM_JEM_PRICING_MANAGEMENT_FEE_TAX'); ?></dt>
+                    <dd class="col-sm-6" data-jem-quote-management-fee-tax>
+                        <?php echo $this->escape($currency . ' ' . (string) $managementFee['line_tax']); ?>
+                    </dd>
+                    <dt class="col-sm-6"><?php echo Text::_('COM_JEM_PRICING_MANAGEMENT_FEE_GROSS'); ?></dt>
+                    <dd class="col-sm-6" data-jem-quote-management-fee-gross>
+                        <?php echo $this->escape($currency . ' ' . (string) $managementFee['line_gross']); ?>
+                    </dd>
+                <?php endif; ?>
                 <?php foreach ($taxGroups as $rate => $taxMinor) : ?>
                     <dt class="col-sm-6">
                         <?php echo Text::sprintf('COM_JEM_PRICING_TAX_GROUP', $this->escape($rate)); ?>
