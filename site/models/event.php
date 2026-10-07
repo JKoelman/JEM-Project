@@ -1402,6 +1402,63 @@ class JemModelEvent extends ItemModel
      * @access public
      * @return int register id on success, else false
      */
+    /**
+     * Return the published frontend pricing options for one event.
+     *
+     * Display data is informative only. JemPricingQuoteService remains the
+     * authoritative eligibility, inventory and monetary boundary.
+     *
+     * @param  int  $eventId  Event identifier.
+     *
+     * @return array<int,object>
+     */
+    public function getPricingOptions(int $eventId): array
+    {
+        if ($eventId < 1) {
+            return array();
+        }
+
+        $db = Factory::getContainer()->get('DatabaseDriver');
+        $query = $db->getQuery(true)
+            ->select(array(
+                'p.id',
+                'p.event_id',
+                'p.capacity_pool_id',
+                'p.code',
+                'p.name',
+                'p.description',
+                'p.amount',
+                'p.tax_rate_id',
+                'p.quota',
+                'p.min_quantity',
+                'p.max_quantity',
+                'p.available_from',
+                'p.available_until',
+                'p.min_age',
+                'p.max_age',
+                'p.access_level_id',
+                'p.user_group_id',
+                'p.verification_mode',
+                'p.ordering',
+                't.name AS tax_name',
+                't.type AS tax_type',
+                't.rate AS tax_rate'
+            ))
+            ->from($db->quoteName('#__jem_event_prices', 'p'))
+            ->join(
+                'LEFT',
+                $db->quoteName('#__jem_tax_rates', 't')
+                . ' ON t.id = p.tax_rate_id'
+            )
+            ->where('p.event_id = ' . $eventId)
+            ->where('p.published = 1')
+            ->order('p.ordering ASC, p.id ASC');
+
+        $db->setQuery($query);
+
+        return (array) $db->loadObjectList();
+    }
+
     public function userregister()
     {
         $app = Factory::getApplication('site');
