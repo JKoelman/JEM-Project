@@ -341,8 +341,7 @@ $registrationFooter = trim((string) $this->item->params->get('registration_foote
                             if($this->item->reginvitedonly == 1){
                                 if($this->isregistered === 0){
                                     echo $this->loadTemplate(
-                                        !empty($this->pricingOptions)
-                                        && in_array((string) ($this->item->pricing_mode ?? 'classic'), array('single', 'multiple', 'priced'), true)
+                                        in_array((string) ($this->item->pricing_mode ?? 'classic'), array('single', 'multiple', 'priced'), true)
                                             ? 'pricedorder'
                                             : 'regform'
                                     );
@@ -354,8 +353,7 @@ $registrationFooter = trim((string) $this->item->params->get('registration_foote
                         case 4:
                         case 5:
                             echo $this->loadTemplate(
-                                        !empty($this->pricingOptions)
-                                        && in_array((string) ($this->item->pricing_mode ?? 'classic'), array('single', 'multiple', 'priced'), true)
+                                        in_array((string) ($this->item->pricing_mode ?? 'classic'), array('single', 'multiple', 'priced'), true)
                                             ? 'pricedorder'
                                             : 'regform'
                                     );
