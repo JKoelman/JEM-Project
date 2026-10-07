@@ -15,6 +15,8 @@ use Joomla\CMS\Router\Route;
 use Joomla\CMS\Plugin\PluginHelper;
 use Joomla\String\StringHelper;
 
+require_once JPATH_COMPONENT_SITE . '/classes/registrationidentity.class.php';
+
 /**
  * Event-View
  */
