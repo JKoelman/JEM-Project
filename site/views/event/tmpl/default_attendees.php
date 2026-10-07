@@ -340,7 +340,12 @@ $registrationFooter = trim((string) $this->item->params->get('registration_foote
                         case 3:
                             if($this->item->reginvitedonly == 1){
                                 if($this->isregistered === 0){
-                                    echo $this->loadTemplate('regform');
+                                    echo $this->loadTemplate(
+                                        !empty($this->pricingOptions)
+                                        && in_array((string) ($this->item->pricing_mode ?? 'classic'), array('single', 'multiple', 'priced'), true)
+                                            ? 'pricedorder'
+                                            : 'regform'
+                                    );
                                 }  else {
                                     echo Text::_('COM_JEM_INVITED_USERS_ONLY') . '.<br>' . Text::_('COM_JEM_NOT_INVITED') . '.';
                                 }
@@ -348,7 +353,12 @@ $registrationFooter = trim((string) $this->item->params->get('registration_foote
                             break;
                         case 4:
                         case 5:
-                            echo $this->loadTemplate('regform');
+                            echo $this->loadTemplate(
+                                        !empty($this->pricingOptions)
+                                        && in_array((string) ($this->item->pricing_mode ?? 'classic'), array('single', 'multiple', 'priced'), true)
+                                            ? 'pricedorder'
+                                            : 'regform'
+                                    );
                             break;
                     }
                 }
