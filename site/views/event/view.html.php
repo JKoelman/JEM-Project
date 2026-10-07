@@ -433,6 +433,25 @@ class JemViewEvent extends JemView
             $this->isregistered = false;
         }
         $this->registration  = $registration;
+        $this->pricingOptions = array();
+        $this->pricingQuote = null;
+        $this->pricingQuoteError = '';
+        $isPricedEvent = in_array(
+            (string) ($item->pricing_mode ?? 'classic'),
+            array('single', 'multiple', 'priced'),
+            true
+        );
+        if ($isPricedEvent
+            && $userId > 0
+            && JemFeaturePolicy::current()->allows(JemFeaturePolicy::FEATURE_PRICING)) {
+            $this->pricingOptions = $model->getPricingOptions((int) $item->id);
+            $quoteKey = 'com_jem.pricing.quote.' . (int) $item->id;
+            $errorKey = 'com_jem.pricing.quote.error.' . (int) $item->id;
+            $this->pricingQuote = $app->getUserState($quoteKey);
+            $this->pricingQuoteError = (string) $app->getUserState($errorKey, '');
+            $app->setUserState($quoteKey, null);
+            $app->setUserState($errorKey, null);
+        }
         $this->commerceReadOnly = in_array(
             (string) ($item->pricing_mode ?? 'classic'),
             array('single', 'multiple', 'priced'),
