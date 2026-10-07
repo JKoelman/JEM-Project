@@ -1451,7 +1451,18 @@ class JemModelEvent extends ItemModel
                 . ' ON t.id = p.tax_rate_id'
             )
             ->where('p.event_id = ' . $eventId)
-            ->where('p.published = 1')
+            ->where('p.published = 1');
+
+        $now = gmdate('Y-m-d H:i:s');
+        $query
+            ->where(
+                '(' . $db->quoteName('p.available_from') . ' IS NULL'
+                . ' OR ' . $db->quoteName('p.available_from') . ' <= ' . $db->quote($now) . ')'
+            )
+            ->where(
+                '(' . $db->quoteName('p.available_until') . ' IS NULL'
+                . ' OR ' . $db->quoteName('p.available_until') . ' >= ' . $db->quote($now) . ')'
+            )
             ->order('p.ordering ASC, p.id ASC');
 
         $db->setQuery($query);
