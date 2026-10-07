@@ -1441,7 +1441,7 @@ class JemModelEvent extends ItemModel
                 'p.verification_mode',
                 'p.ordering',
                 't.name AS tax_name',
-                't.type AS tax_type',
+                't.tax_type AS tax_type',
                 't.rate AS tax_rate'
             ))
             ->from($db->quoteName('#__jem_event_prices', 'p'))
