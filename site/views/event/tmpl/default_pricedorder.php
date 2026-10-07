@@ -120,6 +120,15 @@ $currency = strtoupper((string) ($this->item->currency ?? 'EUR'));
     </form>
 
     <?php if (is_array($this->pricingQuote)) : ?>
+        <?php
+        $taxGroups = array();
+        foreach ((array) ($this->pricingQuote['lines'] ?? array()) as $line) {
+            $rate = number_format((float) ($line['tax_rate'] ?? 0), 2, '.', '');
+            $taxMinor = (int) round(((float) ($line['line_tax'] ?? 0)) * 100);
+            $taxGroups[$rate] = ($taxGroups[$rate] ?? 0) + $taxMinor;
+        }
+        krsort($taxGroups, SORT_NUMERIC);
+        ?>
         <div class="jem-pricing-quote mt-3" data-jem-pricing-quote>
             <h3><?php echo Text::_('COM_JEM_PRICING_SUMMARY'); ?></h3>
             <dl class="row">
@@ -129,6 +138,18 @@ $currency = strtoupper((string) ($this->item->currency ?? 'EUR'));
                 <dd class="col-sm-6" data-jem-quote-subtotal><?php echo $this->escape($currency . ' ' . $this->pricingQuote['subtotal_net']); ?></dd>
                 <dt class="col-sm-6"><?php echo Text::_('COM_JEM_PRICING_TAX_TOTAL'); ?></dt>
                 <dd class="col-sm-6" data-jem-quote-tax><?php echo $this->escape($currency . ' ' . $this->pricingQuote['tax_total']); ?></dd>
+                <?php foreach ($taxGroups as $rate => $taxMinor) : ?>
+                    <dt class="col-sm-6">
+                        <?php echo Text::sprintf('COM_JEM_PRICING_TAX_GROUP', $this->escape($rate)); ?>
+                    </dt>
+                    <dd class="col-sm-6"
+                        data-jem-quote-tax-group
+                        data-tax-rate="<?php echo $this->escape($rate); ?>">
+                        <?php echo $this->escape(
+                            $currency . ' ' . number_format($taxMinor / 100, 2, '.', '')
+                        ); ?>
+                    </dd>
+                <?php endforeach; ?>
                 <dt class="col-sm-6"><?php echo Text::_('COM_JEM_PRICING_GRAND_TOTAL'); ?></dt>
                 <dd class="col-sm-6" data-jem-quote-total><strong><?php echo $this->escape($currency . ' ' . $this->pricingQuote['grand_total']); ?></strong></dd>
             </dl>
