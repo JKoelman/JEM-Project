@@ -384,9 +384,17 @@ final class JemPricingQuoteService
         $managementFeeActive = $managementFeeMode !== 'none'
             && $managementFeeUnit->minorUnits() > 0;
         $managementFeeTaxRateId = (int) ($event['management_fee_tax_rate_id'] ?? 0);
+        $managementFeeModeValid = in_array(
+            $managementFeeMode,
+            array('fixed_per_ticket', 'fixed_per_registration', 'percentage'),
+            true
+        );
+        $managementFeeBasisValid = $managementFeeMode === 'percentage'
+            ? in_array($managementFeeBasis, array('net', 'gross'), true)
+            : $managementFeeBasis === 'gross';
         if ($managementFeeActive
-            && (!in_array($managementFeeMode, array('fixed_per_ticket', 'fixed_per_registration'), true)
-                || $managementFeeBasis !== 'gross'
+            && (!$managementFeeModeValid
+                || !$managementFeeBasisValid
                 || $managementFeeTaxRateId < 1)) {
             throw new JemPricingQuoteException(
                 'invalid_management_fee',
@@ -487,16 +495,34 @@ final class JemPricingQuoteService
             }
             $this->assertTaxApplicable($feeTax, $event, $now);
 
-            $feePolicy = new JemTaxPolicy(
-                (string) $feeTax['tax_type'],
-                (string) $feeTax['rate'],
-                true
-            );
-            $feeQuantity = $managementFeeMode === 'fixed_per_registration'
-                ? 1
-                : $eventQuantity;
+            if ($managementFeeMode === 'percentage') {
+                $feeBase = $managementFeeBasis === 'net'
+                    ? $subtotalNet
+                    : $grandTotal;
+                $feeEntered = $this->percentageOf(
+                    $feeBase,
+                    $managementFeeUnit->minorUnits()
+                );
+                $feePolicy = new JemTaxPolicy(
+                    (string) $feeTax['tax_type'],
+                    (string) $feeTax['rate'],
+                    $managementFeeBasis === 'gross'
+                );
+                $feeQuantity = 1;
+            } else {
+                $feeEntered = $managementFeeUnit;
+                $feePolicy = new JemTaxPolicy(
+                    (string) $feeTax['tax_type'],
+                    (string) $feeTax['rate'],
+                    true
+                );
+                $feeQuantity = $managementFeeMode === 'fixed_per_registration'
+                    ? 1
+                    : $eventQuantity;
+            }
+
             $feeCalculation = JemTaxCalculator::calculate(
-                $managementFeeUnit,
+                $feeEntered,
                 $feePolicy,
                 $feeQuantity
             );
@@ -508,6 +534,7 @@ final class JemPricingQuoteService
             $managementFee = array(
                 'mode' => $managementFeeMode,
                 'basis' => $managementFeeBasis,
+                'value' => (string) ($event['management_fee_value'] ?? '0.00'),
                 'refundable' => !empty($event['management_fee_refundable']) ? 1 : 0,
                 'quantity' => $feeQuantity,
                 'unit_net' => $feeCalculation->unitNet->decimal(),
@@ -604,6 +631,55 @@ final class JemPricingQuoteService
         $quote['quote_fingerprint'] = $this->quoteFingerprint($quote);
 
         return $quote;
+    }
+
+    /**
+     * Apply a percentage stored with two decimal places to an exact money base.
+     *
+     * The percentage is supplied in hundredths of a percent:
+     * 10.00% = 1000, 2.50% = 250. The result is rounded to the nearest
+     * currency minor unit, half away from zero, without floating point.
+     */
+    private function percentageOf(JemMoney $base, int $percentageHundredths): JemMoney
+    {
+        if ($percentageHundredths < 0) {
+            throw new InvalidArgumentException('Management fee percentage cannot be negative.');
+        }
+
+        $divisor = 10000;
+        $baseMinor = $base->minorUnits();
+        $negative = $baseMinor < 0;
+        $absolute = abs($baseMinor);
+
+        $wholeMultiplier = intdiv($percentageHundredths, $divisor);
+        $fractionMultiplier = $percentageHundredths % $divisor;
+
+        if ($wholeMultiplier !== 0
+            && $absolute > intdiv(PHP_INT_MAX, $wholeMultiplier)) {
+            throw new OverflowException('Management fee percentage exceeds the supported monetary range.');
+        }
+        $whole = $absolute * $wholeMultiplier;
+
+        $quotient = intdiv($absolute, $divisor);
+        if ($fractionMultiplier !== 0
+            && $quotient > intdiv(PHP_INT_MAX, $fractionMultiplier)) {
+            throw new OverflowException('Management fee percentage exceeds the supported monetary range.');
+        }
+        $fractionWhole = $quotient * $fractionMultiplier;
+        $remainderProduct = ($absolute % $divisor) * $fractionMultiplier;
+        $fractionRounded = intdiv($remainderProduct + intdiv($divisor, 2), $divisor);
+
+        if ($whole > PHP_INT_MAX - $fractionWhole
+            || $whole + $fractionWhole > PHP_INT_MAX - $fractionRounded) {
+            throw new OverflowException('Management fee percentage exceeds the supported monetary range.');
+        }
+
+        $result = $whole + $fractionWhole + $fractionRounded;
+        if ($negative) {
+            $result *= -1;
+        }
+
+        return JemMoney::fromMinorUnits($result, $base->currency());
     }
 
     private function loadEvent(int $eventId, bool $lock): ?array
@@ -1071,7 +1147,7 @@ final class JemPricingQuoteService
                 ? array_intersect_key(
                     $quote['management_fee'],
                     array_fill_keys(array(
-                        'mode', 'basis', 'refundable', 'quantity',
+                        'mode', 'basis', 'value', 'refundable', 'quantity',
                         'unit_net', 'unit_tax', 'unit_gross',
                         'line_net', 'line_tax', 'line_gross',
                         'tax_code', 'tax_name', 'tax_type', 'tax_rate',
