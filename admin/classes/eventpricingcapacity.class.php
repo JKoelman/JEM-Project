@@ -366,8 +366,35 @@ class JemEventPricingCapacityService
         $currency = self::storedOrDefaultCurrency($existing);
         $data['currency'] = $currency;
         $data['prices_include_tax'] = !empty($data['prices_include_tax']) ? 1 : 0;
-        $data['management_fee_mode'] = 'fixed_per_ticket';
-        $data['management_fee_basis'] = 'gross';
+
+        $feeMode = strtolower(trim((string) (
+            $data['management_fee_mode']
+            ?? $existing['management_fee_mode']
+            ?? 'fixed_per_ticket'
+        )));
+        if (!in_array($feeMode, array(
+            'none',
+            'fixed_per_ticket',
+            'percentage',
+            'fixed_per_registration',
+        ), true)) {
+            throw new InvalidArgumentException(Text::_('COM_JEM_EVENT_PRICING_ERROR_FEE_MODE'));
+        }
+
+        $feeBasis = strtolower(trim((string) (
+            $data['management_fee_basis']
+            ?? $existing['management_fee_basis']
+            ?? 'gross'
+        )));
+        if (!in_array($feeBasis, array('net', 'gross'), true)) {
+            throw new InvalidArgumentException(Text::_('COM_JEM_EVENT_PRICING_ERROR_FEE_BASIS'));
+        }
+        if ($feeMode !== 'percentage') {
+            $feeBasis = 'gross';
+        }
+
+        $data['management_fee_mode'] = $feeMode;
+        $data['management_fee_basis'] = $feeBasis;
         $data['management_fee_value'] = self::normaliseMoney($data['management_fee_value'] ?? '0.00', $currency);
         $data['management_fee_refundable'] = !empty($data['management_fee_refundable']) ? 1 : 0;
         $data['default_tax_rate_id'] = self::normaliseNullableId($data['default_tax_rate_id'] ?? null);
