@@ -691,7 +691,18 @@
             description="COM_JEM_EVENT_DEFAULT_TAX_RATE_DESC"
             showon="pricing_mode:single,multiple"
         />
-        <field name="management_fee_mode" type="hidden" default="fixed_per_ticket" />
+        <field name="management_fee_mode" type="list"
+            default="fixed_per_ticket"
+            filter="cmd"
+            label="COM_JEM_EVENT_MANAGEMENT_FEE_MODE"
+            description="COM_JEM_EVENT_MANAGEMENT_FEE_MODE_DESC"
+            showon="pricing_mode:single,multiple"
+        >
+            <option value="none">COM_JEM_EVENT_MANAGEMENT_FEE_MODE_NONE</option>
+            <option value="fixed_per_ticket">COM_JEM_EVENT_MANAGEMENT_FEE_MODE_PER_TICKET</option>
+            <option value="percentage">COM_JEM_EVENT_MANAGEMENT_FEE_MODE_PERCENTAGE</option>
+            <option value="fixed_per_registration">COM_JEM_EVENT_MANAGEMENT_FEE_MODE_PER_REGISTRATION</option>
+        </field>
         <field name="management_fee_value" type="number"
             min="0"
             step="0.01"
@@ -700,7 +711,16 @@
             description="COM_JEM_EVENT_MANAGEMENT_FEE_DESC"
             showon="pricing_mode:single,multiple"
         />
-        <field name="management_fee_basis" type="hidden" default="gross" />
+        <field name="management_fee_basis" type="list"
+            default="gross"
+            filter="cmd"
+            label="COM_JEM_EVENT_MANAGEMENT_FEE_BASIS"
+            description="COM_JEM_EVENT_MANAGEMENT_FEE_BASIS_DESC"
+            showon="pricing_mode:single,multiple"
+        >
+            <option value="net">COM_JEM_EVENT_MANAGEMENT_FEE_BASIS_NET</option>
+            <option value="gross">COM_JEM_EVENT_MANAGEMENT_FEE_BASIS_GROSS</option>
+        </field>
         <field name="management_fee_tax_rate_id" type="taxrateoptions"
             label="COM_JEM_EVENT_MANAGEMENT_FEE_TAX_RATE"
             description="COM_JEM_EVENT_MANAGEMENT_FEE_TAX_RATE_DESC"
