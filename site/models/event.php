@@ -1454,6 +1454,34 @@ class JemModelEvent extends ItemModel
             ->where('p.published = 1');
 
         $now = gmdate('Y-m-d H:i:s');
+        $user = JemFactory::getUser();
+        $accessLevels = array_values(array_unique(array_filter(
+            array_map('intval', (array) $user->getAuthorisedViewLevels()),
+            static fn (int $id): bool => $id > 0
+        )));
+        $userGroups = array_values(array_unique(array_filter(
+            array_map('intval', (array) $user->getAuthorisedGroups()),
+            static fn (int $id): bool => $id > 0
+        )));
+
+        $accessCondition = '('
+            . $db->quoteName('p.access_level_id') . ' IS NULL'
+            . ' OR ' . $db->quoteName('p.access_level_id') . ' = 0';
+        if ($accessLevels) {
+            $accessCondition .= ' OR ' . $db->quoteName('p.access_level_id')
+                . ' IN (' . implode(',', $accessLevels) . ')';
+        }
+        $accessCondition .= ')';
+
+        $groupCondition = '('
+            . $db->quoteName('p.user_group_id') . ' IS NULL'
+            . ' OR ' . $db->quoteName('p.user_group_id') . ' = 0';
+        if ($userGroups) {
+            $groupCondition .= ' OR ' . $db->quoteName('p.user_group_id')
+                . ' IN (' . implode(',', $userGroups) . ')';
+        }
+        $groupCondition .= ')';
+
         $query
             ->where(
                 '(' . $db->quoteName('p.available_from') . ' IS NULL'
@@ -1463,6 +1491,8 @@ class JemModelEvent extends ItemModel
                 '(' . $db->quoteName('p.available_until') . ' IS NULL'
                 . ' OR ' . $db->quoteName('p.available_until') . ' >= ' . $db->quote($now) . ')'
             )
+            ->where($accessCondition)
+            ->where($groupCondition)
             ->order('p.ordering ASC, p.id ASC');
 
         $db->setQuery($query);
