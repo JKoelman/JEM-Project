@@ -17,6 +17,7 @@ use Joomla\CMS\Session\Session;
 use Joomla\Utilities\ArrayHelper;
 
 require_once (JPATH_COMPONENT_SITE.'/classes/controller.form.class.php');
+require_once (JPATH_COMPONENT_SITE.'/classes/registrationidentity.class.php');
 
 /**
  * Event Controller
@@ -624,6 +625,7 @@ class JemControllerEvent extends JemControllerForm
             $quote = (new JemPricingQuoteService(
                 Factory::getContainer()->get('DatabaseDriver')
             ))->quote($eventId, $selections, $context);
+            $quote['operation_reference'] = JemRegistrationIdentity::generateOperationReference();
             $app->setUserState($quoteKey, $quote);
         } catch (JemPricingQuoteException | InvalidArgumentException $error) {
             $app->setUserState($errorKey, $error->getMessage());
