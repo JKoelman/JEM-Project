@@ -204,6 +204,43 @@ $currency = strtoupper((string) ($this->item->currency ?? 'EUR'));
                 </div>
             <?php endforeach; ?>
             </div>
+
+            <?php
+            $quoteFingerprint = (string) ($this->pricingQuote['quote_fingerprint'] ?? '');
+            $operationReference = (string) ($this->pricingQuote['operation_reference'] ?? '');
+            ?>
+            <?php if (
+                preg_match('/^[a-f0-9]{64}$/D', $quoteFingerprint) === 1
+                && JemRegistrationIdentity::isOperationReference($operationReference)
+            ) : ?>
+                <form method="post"
+                      action="<?php echo Route::_('index.php?option=com_jem', false); ?>"
+                      class="jem-pricing-confirm mt-3"
+                      data-jem-pricing-confirm>
+                    <input type="hidden" name="task" value="event.pricingconfirm">
+                    <input type="hidden" name="rdid" value="<?php echo (int) $this->item->id; ?>">
+                    <input type="hidden"
+                           name="quote_fingerprint"
+                           value="<?php echo $this->escape($quoteFingerprint); ?>">
+                    <input type="hidden"
+                           name="operation_reference"
+                           value="<?php echo $this->escape($operationReference); ?>">
+
+                    <?php foreach ((array) ($this->pricingQuote['lines'] ?? array()) as $confirmLine) : ?>
+                        <input type="hidden"
+                               name="price_quantity[<?php echo (int) $confirmLine['event_price_id']; ?>]"
+                               value="<?php echo (int) $confirmLine['quantity']; ?>">
+                    <?php endforeach; ?>
+
+                    <?php echo HTMLHelper::_('form.token'); ?>
+
+                    <button type="submit"
+                            class="btn btn-success"
+                            data-jem-pricing-confirm-submit>
+                        <?php echo Text::_('COM_JEM_PRICING_CONFIRM'); ?>
+                    </button>
+                </form>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 </div>
