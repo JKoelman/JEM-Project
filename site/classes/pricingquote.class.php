@@ -151,6 +151,99 @@ final class JemPricingQuoteService
     }
 
     /**
+     * Read-only remaining inventory projection for frontend price options.
+     *
+     * The result uses the same active-registration, capacity-pool and quota
+     * sources as the authoritative quote path. It does not reserve inventory.
+     *
+     * @param int   $eventId Event identifier.
+     * @param array $priceIds Published event-price identifiers.
+     * @param int   $excludedRegisterId Existing booking holder registration.
+     *
+     * @return array<int,array<string,int|null>>
+     */
+    public function availability(
+        int $eventId,
+        array $priceIds,
+        int $excludedRegisterId = 0
+    ): array {
+        if ($eventId < 1) {
+            throw new InvalidArgumentException('A valid priced event is required.');
+        }
+        if ($excludedRegisterId < 0) {
+            throw new InvalidArgumentException('Excluded registration ID cannot be negative.');
+        }
+
+        $priceIds = array_values(array_unique(array_filter(
+            array_map('intval', $priceIds),
+            static fn (int $id): bool => $id > 0
+        )));
+        sort($priceIds, SORT_NUMERIC);
+        if (!$priceIds) {
+            return array();
+        }
+
+        $event = $this->loadEvent($eventId, false);
+        if (!$event) {
+            throw new JemPricingQuoteException('event_not_found', 'The priced event does not exist.');
+        }
+
+        $prices = $this->loadPrices($eventId, $priceIds, false);
+        if (count($prices) !== count($priceIds)) {
+            throw new JemPricingQuoteException(
+                'price_unavailable',
+                'A selected price is unavailable for this event.'
+            );
+        }
+
+        $poolIds = array_values(array_unique(array_filter(array_map(
+            static fn (array $price): int => (int) ($price['capacity_pool_id'] ?? 0),
+            $prices
+        ))));
+        $pools = $this->loadPools($eventId, $poolIds, false);
+        $poolsById = array_column($pools, null, 'id');
+        $used = $this->loadUsedCapacity($eventId, $excludedRegisterId);
+
+        $eventUsed = (int) $event['reservedplaces'] + (int) $used['event'];
+        $eventAvailable = max(0, (int) $event['maxplaces'] - $eventUsed);
+        $result = array();
+
+        foreach ($prices as $price) {
+            $priceId = (int) $price['id'];
+            $remaining = $eventAvailable;
+            $poolRemaining = null;
+            $quotaRemaining = null;
+
+            $poolId = (int) ($price['capacity_pool_id'] ?? 0);
+            if ($poolId > 0 && isset($poolsById[$poolId])) {
+                $poolRemaining = max(
+                    0,
+                    (int) $poolsById[$poolId]['capacity']
+                    - (int) ($used['pools'][$poolId] ?? 0)
+                );
+                $remaining = min($remaining, $poolRemaining);
+            }
+
+            if ($price['quota'] !== null) {
+                $quotaRemaining = max(
+                    0,
+                    (int) $price['quota'] - (int) ($used['prices'][$priceId] ?? 0)
+                );
+                $remaining = min($remaining, $quotaRemaining);
+            }
+
+            $result[$priceId] = array(
+                'remaining' => max(0, $remaining),
+                'event_remaining' => $eventAvailable,
+                'pool_remaining' => $poolRemaining,
+                'quota_remaining' => $quotaRemaining,
+            );
+        }
+
+        return $result;
+    }
+
+    /**
      * Rebuild the stable commercial fingerprint after an authorised server
      * service has applied stored price-lock terms to a quote.
      */
