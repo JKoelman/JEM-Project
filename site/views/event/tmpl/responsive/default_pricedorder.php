@@ -142,9 +142,17 @@ $currency = strtoupper((string) ($this->item->currency ?? 'EUR'));
             <dl class="row">
                 <dt class="col-sm-6"><?php echo Text::_('COM_JEM_PRICING_TOTAL_PLACES'); ?></dt>
                 <dd class="col-sm-6" data-jem-quote-quantity><?php echo (int) $this->pricingQuote['quantity']; ?></dd>
-                <dt class="col-sm-6"><?php echo Text::_('COM_JEM_PRICING_SUBTOTAL_NET'); ?></dt>
+                <dt class="col-sm-6">
+                    <?php echo Text::_($managementFee
+                        ? 'COM_JEM_PRICING_SUBTOTAL_NET_TOTAL'
+                        : 'COM_JEM_PRICING_SUBTOTAL_NET'); ?>
+                </dt>
                 <dd class="col-sm-6" data-jem-quote-subtotal><?php echo $this->escape($currency . ' ' . $this->pricingQuote['subtotal_net']); ?></dd>
-                <dt class="col-sm-6"><?php echo Text::_('COM_JEM_PRICING_TAX_TOTAL'); ?></dt>
+                <dt class="col-sm-6">
+                    <?php echo Text::_($managementFee
+                        ? 'COM_JEM_PRICING_TAX_TOTAL_WITH_FEES'
+                        : 'COM_JEM_PRICING_TAX_TOTAL'); ?>
+                </dt>
                 <dd class="col-sm-6" data-jem-quote-tax><?php echo $this->escape($currency . ' ' . $this->pricingQuote['tax_total']); ?></dd>
                 <?php if ($managementFee) : ?>
                     <dt class="col-sm-6"><?php echo Text::_('COM_JEM_PRICING_MANAGEMENT_FEE_NET'); ?></dt>
