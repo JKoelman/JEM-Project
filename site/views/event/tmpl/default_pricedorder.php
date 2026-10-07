@@ -29,6 +29,11 @@ $currency = strtoupper((string) ($this->item->currency ?? 'EUR'));
         </div>
     <?php endif; ?>
 
+    <?php if (empty($this->pricingOptions)) : ?>
+        <div class="alert alert-info" data-jem-pricing-no-options>
+            <?php echo Text::_('COM_JEM_PRICING_NO_AVAILABLE_OPTIONS'); ?>
+        </div>
+    <?php else : ?>
     <form method="post"
           action="<?php echo Route::_('index.php?option=com_jem&view=event&id=' . (int) $this->item->id); ?>"
           class="jem-pricing-order-form">
@@ -118,8 +123,9 @@ $currency = strtoupper((string) ($this->item->currency ?? 'EUR'));
             <?php echo Text::_('COM_JEM_PRICING_CALCULATE'); ?>
         </button>
     </form>
+    <?php endif; ?>
 
-    <?php if (is_array($this->pricingQuote)) : ?>
+    <?php if (!empty($this->pricingOptions) && is_array($this->pricingQuote)) : ?>
         <?php
         $taxGroups = array();
         foreach ((array) ($this->pricingQuote['lines'] ?? array()) as $line) {
