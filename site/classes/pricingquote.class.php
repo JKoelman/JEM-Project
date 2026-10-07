@@ -375,10 +375,31 @@ final class JemPricingQuoteService
         }
         $poolsById = array_column($pools, null, 'id');
 
-        $taxIds = array_values(array_unique(array_map(
+        $managementFeeUnit = JemMoney::fromDecimal(
+            (string) ($event['management_fee_value'] ?? '0.00'),
+            (string) $event['currency']
+        );
+        $managementFeeActive = $managementFeeUnit->minorUnits() > 0;
+        $managementFeeTaxRateId = (int) ($event['management_fee_tax_rate_id'] ?? 0);
+        if ($managementFeeActive
+            && ((string) ($event['management_fee_mode'] ?? '') !== 'fixed_per_ticket'
+                || (string) ($event['management_fee_basis'] ?? '') !== 'gross'
+                || $managementFeeTaxRateId < 1)) {
+            throw new JemPricingQuoteException(
+                'invalid_management_fee',
+                'The management fee configuration is incomplete.'
+            );
+        }
+
+        $taxIds = array_map(
             static fn (array $price): int => (int) $price['tax_rate_id'],
             $prices
-        )));
+        );
+        if ($managementFeeActive) {
+            $taxIds[] = $managementFeeTaxRateId;
+        }
+        $taxIds = array_values(array_unique($taxIds));
+
         $taxRates = $this->loadTaxRates($taxIds, $lock);
         if (count($taxRates) !== count($taxIds)) {
             throw new JemPricingQuoteException(
@@ -451,6 +472,50 @@ final class JemPricingQuoteService
         }
 
         $this->assertBookingQuantity($event, $eventQuantity);
+
+        $managementFee = null;
+        if ($managementFeeActive) {
+            $feeTax = $taxRatesById[$managementFeeTaxRateId] ?? null;
+            if (!$feeTax) {
+                throw new JemPricingQuoteException(
+                    'tax_unavailable',
+                    'The management fee tax rate is unavailable.'
+                );
+            }
+            $this->assertTaxApplicable($feeTax, $event, $now);
+
+            $feePolicy = new JemTaxPolicy(
+                (string) $feeTax['tax_type'],
+                (string) $feeTax['rate'],
+                true
+            );
+            $feeCalculation = JemTaxCalculator::calculate(
+                $managementFeeUnit,
+                $feePolicy,
+                $eventQuantity
+            );
+
+            $subtotalNet = $subtotalNet->plus($feeCalculation->lineNet);
+            $taxTotal = $taxTotal->plus($feeCalculation->lineTax);
+            $grandTotal = $grandTotal->plus($feeCalculation->lineGross);
+
+            $managementFee = array(
+                'mode' => 'fixed_per_ticket',
+                'basis' => 'gross',
+                'refundable' => !empty($event['management_fee_refundable']) ? 1 : 0,
+                'quantity' => $eventQuantity,
+                'unit_net' => $feeCalculation->unitNet->decimal(),
+                'unit_tax' => $feeCalculation->unitTax->decimal(),
+                'unit_gross' => $feeCalculation->unitGross->decimal(),
+                'line_net' => $feeCalculation->lineNet->decimal(),
+                'line_tax' => $feeCalculation->lineTax->decimal(),
+                'line_gross' => $feeCalculation->lineGross->decimal(),
+                'tax_code' => (string) $feeTax['code'],
+                'tax_name' => (string) $feeTax['name'],
+                'tax_type' => (string) $feeTax['tax_type'],
+                'tax_rate' => $feeCalculation->policy->rateDecimal(),
+            );
+        }
 
         $eventUsed = (int) $event['reservedplaces'] + (int) $used['event'];
         $eventAvailable = max(0, (int) $event['maxplaces'] - $eventUsed);
@@ -526,6 +591,7 @@ final class JemPricingQuoteService
             'subtotal_net' => $subtotalNet->decimal(),
             'tax_total' => $taxTotal->decimal(),
             'grand_total' => $grandTotal->decimal(),
+            'management_fee' => $managementFee,
             'quoted_at' => $now,
             'lines' => $lines,
         );
@@ -539,7 +605,9 @@ final class JemPricingQuoteService
         $query = $this->db->getQuery(true)
             ->select(array(
                 'e.id', 'e.pricing_mode', 'e.pricing_revision', 'e.currency',
-                'e.prices_include_tax', 'e.maxplaces', 'e.reservedplaces',
+                'e.prices_include_tax', 'e.management_fee_mode', 'e.management_fee_value',
+                'e.management_fee_basis', 'e.management_fee_tax_rate_id',
+                'e.management_fee_refundable', 'e.maxplaces', 'e.reservedplaces',
                 'e.minbookeduser', 'e.maxbookeduser', 'e.waitinglist',
                 'e.registra', 'e.registra_from', 'e.registra_until', 'e.reginvitedonly',
                 'e.published', 'e.publish_up', 'e.publish_down', 'e.access',
@@ -993,6 +1061,17 @@ final class JemPricingQuoteService
             'subtotal_net' => (string) $quote['subtotal_net'],
             'tax_total' => (string) $quote['tax_total'],
             'grand_total' => (string) $quote['grand_total'],
+            'management_fee' => is_array($quote['management_fee'] ?? null)
+                ? array_intersect_key(
+                    $quote['management_fee'],
+                    array_fill_keys(array(
+                        'mode', 'basis', 'refundable', 'quantity',
+                        'unit_net', 'unit_tax', 'unit_gross',
+                        'line_net', 'line_tax', 'line_gross',
+                        'tax_code', 'tax_name', 'tax_type', 'tax_rate',
+                    ), true)
+                )
+                : null,
             'lines' => $lines,
         );
 
