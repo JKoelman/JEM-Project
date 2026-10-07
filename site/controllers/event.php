@@ -567,6 +567,73 @@ class JemControllerEvent extends JemControllerForm
     }
 
     /**
+     * Calculate an authoritative priced-event quote without writing a registration.
+     */
+    public function pricingquote()
+    {
+        Session::checkToken() or jexit('Invalid Token');
+
+        $app = Factory::getApplication();
+        $input = $app->getInput();
+        $user = JemFactory::getUser();
+        $eventId = $input->getInt('rdid', 0);
+
+        if ((int) $user->get('id') < 1) {
+            throw new Exception(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+        }
+
+        $model = $this->getModel('Event', 'JemModel');
+        $event = $model->getItem($eventId);
+        if (!$event) {
+            throw new Exception(Text::_('COM_JEM_EVENT_ERROR_EVENT_NOT_FOUND'), 404);
+        }
+
+        if (!in_array((string) ($event->pricing_mode ?? 'classic'), array('single', 'multiple', 'priced'), true)
+            || !JemFeaturePolicy::current()->allows(JemFeaturePolicy::FEATURE_PRICING)) {
+            throw new Exception(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+        }
+
+        $raw = (array) $input->post->get('price_quantity', array(), 'array');
+        $selections = array();
+        foreach ($raw as $priceId => $quantity) {
+            $priceId = (int) $priceId;
+            $quantity = is_scalar($quantity) ? trim((string) $quantity) : '';
+            if ($priceId < 1 || $quantity === '' || $quantity === '0') {
+                continue;
+            }
+            $selections[] = array(
+                'event_price_id' => $priceId,
+                'quantity' => $quantity,
+            );
+        }
+
+        $registration = $model->getUserRegistration($eventId);
+        $excludedRegisterId = is_object($registration) ? (int) ($registration->id ?? 0) : 0;
+        $context = JemPricingQuoteContext::fromIdentity(
+            $user,
+            (int) ($event->pricing_revision ?? 0),
+            $excludedRegisterId
+        );
+
+        $quoteKey = 'com_jem.pricing.quote.' . $eventId;
+        $errorKey = 'com_jem.pricing.quote.error.' . $eventId;
+        $app->setUserState($quoteKey, null);
+        $app->setUserState($errorKey, null);
+
+        try {
+            $quote = (new JemPricingQuoteService(
+                Factory::getContainer()->get('DatabaseDriver')
+            ))->quote($eventId, $selections, $context);
+            $app->setUserState($quoteKey, $quote);
+        } catch (JemPricingQuoteException | InvalidArgumentException $error) {
+            $app->setUserState($errorKey, $error->getMessage());
+        }
+
+        $this->setRedirect(Route::_(JemHelperRoute::getEventRoute($eventId), false));
+        $this->redirect();
+    }
+
+    /**
      * Saves the registration to the database
      */
     public function userregister() {
