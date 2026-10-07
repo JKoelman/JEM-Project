@@ -379,11 +379,14 @@ final class JemPricingQuoteService
             (string) ($event['management_fee_value'] ?? '0.00'),
             (string) $event['currency']
         );
-        $managementFeeActive = $managementFeeUnit->minorUnits() > 0;
+        $managementFeeMode = (string) ($event['management_fee_mode'] ?? 'fixed_per_ticket');
+        $managementFeeBasis = (string) ($event['management_fee_basis'] ?? 'gross');
+        $managementFeeActive = $managementFeeMode !== 'none'
+            && $managementFeeUnit->minorUnits() > 0;
         $managementFeeTaxRateId = (int) ($event['management_fee_tax_rate_id'] ?? 0);
         if ($managementFeeActive
-            && ((string) ($event['management_fee_mode'] ?? '') !== 'fixed_per_ticket'
-                || (string) ($event['management_fee_basis'] ?? '') !== 'gross'
+            && (!in_array($managementFeeMode, array('fixed_per_ticket', 'fixed_per_registration'), true)
+                || $managementFeeBasis !== 'gross'
                 || $managementFeeTaxRateId < 1)) {
             throw new JemPricingQuoteException(
                 'invalid_management_fee',
@@ -489,10 +492,13 @@ final class JemPricingQuoteService
                 (string) $feeTax['rate'],
                 true
             );
+            $feeQuantity = $managementFeeMode === 'fixed_per_registration'
+                ? 1
+                : $eventQuantity;
             $feeCalculation = JemTaxCalculator::calculate(
                 $managementFeeUnit,
                 $feePolicy,
-                $eventQuantity
+                $feeQuantity
             );
 
             $subtotalNet = $subtotalNet->plus($feeCalculation->lineNet);
@@ -500,10 +506,10 @@ final class JemPricingQuoteService
             $grandTotal = $grandTotal->plus($feeCalculation->lineGross);
 
             $managementFee = array(
-                'mode' => 'fixed_per_ticket',
-                'basis' => 'gross',
+                'mode' => $managementFeeMode,
+                'basis' => $managementFeeBasis,
                 'refundable' => !empty($event['management_fee_refundable']) ? 1 : 0,
-                'quantity' => $eventQuantity,
+                'quantity' => $feeQuantity,
                 'unit_net' => $feeCalculation->unitNet->decimal(),
                 'unit_tax' => $feeCalculation->unitTax->decimal(),
                 'unit_gross' => $feeCalculation->unitGross->decimal(),
