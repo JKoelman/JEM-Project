@@ -71,6 +71,18 @@ $currency = strtoupper((string) ($this->item->currency ?? 'EUR'));
                                     ?>
                                 </div>
                             <?php endif; ?>
+                            <?php if ($this->showPricingAvailability
+                                && isset($option->remaining_availability)
+                                && $option->remaining_availability !== null) : ?>
+                                <div class="small text-muted"
+                                     data-jem-price-availability
+                                     data-remaining="<?php echo (int) $option->remaining_availability; ?>">
+                                    <?php echo Text::sprintf(
+                                        'COM_JEM_PRICING_REMAINING_AVAILABILITY',
+                                        (int) $option->remaining_availability
+                                    ); ?>
+                                </div>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <?php echo $this->escape($currency . ' ' . number_format((float) $option->amount, 2, '.', '')); ?>
