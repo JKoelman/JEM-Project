@@ -344,6 +344,11 @@ class JemModelAttendees extends ListModel
             if ($priced) {
                 $parts = array();
                 foreach ($breakdowns[(int) $item->id] ?? array() as $line) {
+                    if ((string) ($line->line_kind ?? '') === 'management_fee') {
+                        $parts[] = Text::_('COM_JEM_PRICED_REGISTRATION_MANAGEMENT_FEE')
+                            . ' ' . $line->currency . ' ' . $line->line_gross;
+                        continue;
+                    }
                     $parts[] = (int) $line->quantity . 'x ' . $line->item_name
                         . ($line->pool_name ? ' (' . $line->pool_name . ')' : '');
                 }
