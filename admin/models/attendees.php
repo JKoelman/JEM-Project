@@ -194,15 +194,16 @@ class JemModelAttendees extends ListModel
         $db = Factory::getContainer()->get('DatabaseDriver');
         $query = $db->getQuery(true)
             ->select(array(
-                'i.register_id', 'i.line_number', 'i.item_name', 'i.quantity',
-                'i.unit_gross', 'i.line_gross', 'i.currency', 'cp.name AS pool_name',
+                'i.register_id', 'i.line_number', 'i.line_kind', 'i.item_name', 'i.quantity',
+                'i.unit_gross', 'i.line_gross', 'i.currency',
+                'i.calculation_mode', 'i.calculation_basis',
+                'cp.name AS pool_name',
             ))
             ->from($db->quoteName('#__jem_register_items', 'i'))
             ->join('INNER', $db->quoteName('#__jem_register', 'r')
                 . ' ON r.id = i.register_id AND r.revision = i.registration_revision')
             ->join('LEFT', $db->quoteName('#__jem_capacity_pools', 'cp') . ' ON cp.id = i.capacity_pool_id')
             ->where('r.event = ' . (int) $this->eventid)
-            ->where("i.line_kind = 'admission'")
             ->order('i.register_id ASC, i.line_number ASC');
         $db->setQuery($query);
         $breakdowns = array();
