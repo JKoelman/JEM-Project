@@ -337,9 +337,18 @@ final class JemPricedRegistrationService
             $lock
         );
         $byPrice = array();
+        $storedFee = null;
         foreach ($stored as $item) {
             if (($item->line_kind ?? '') === 'admission' && (int) ($item->event_price_id ?? 0) > 0) {
                 $byPrice[(int) $item->event_price_id] = $item;
+            } elseif (($item->line_kind ?? '') === 'management_fee') {
+                if ($storedFee !== null) {
+                    throw new JemPricingQuoteException(
+                        'invalid_fee_snapshot',
+                        'A registration has more than one locked management fee.'
+                    );
+                }
+                $storedFee = $item;
             }
         }
 
@@ -401,12 +410,108 @@ final class JemPricedRegistrationService
         }
         unset($line);
 
+        // The active registration owns its fee policy. Never borrow the
+        // event's current fee (or current fee tax) during an order revision.
+        // A stored order without a fee must remain without one.
+        $quote['management_fee'] = null;
+        if ($storedFee !== null) {
+            $mode = (string) ($storedFee->calculation_mode ?? '');
+            $basis = (string) ($storedFee->calculation_basis ?? '');
+            $value = (string) ($storedFee->calculation_value ?? '');
+            if (!in_array($mode, array('fixed_per_ticket', 'fixed_per_registration', 'percentage'), true)
+                || !in_array($basis, array('net', 'gross'), true)
+                || ($mode !== 'percentage' && $basis !== 'gross')
+                || $value === ''
+                || (string) ($storedFee->currency ?? '') !== $currency) {
+                throw new JemPricingQuoteException(
+                    'invalid_fee_snapshot',
+                    'The locked management-fee snapshot is incomplete.'
+                );
+            }
+
+            $amount = JemMoney::fromDecimal($value, $currency);
+            $quantity = $mode === 'fixed_per_ticket' ? (int) $quote['quantity'] : 1;
+            $feeEntered = $amount;
+            if ($mode === 'percentage') {
+                $feeEntered = $this->percentageOfLockedFee(
+                    $basis === 'net' ? $subtotal : $grandTotal,
+                    $amount->minorUnits()
+                );
+            }
+            $policy = new JemTaxPolicy(
+                (string) $storedFee->tax_type,
+                (string) $storedFee->tax_rate,
+                $mode === 'percentage' ? $basis === 'gross' : true
+            );
+            $calculation = JemTaxCalculator::calculate($feeEntered, $policy, $quantity);
+            $conditions = json_decode((string) ($storedFee->condition_snapshot ?? ''), true);
+            $refundable = is_array($conditions) && !empty($conditions['refundable']);
+
+            $quote['management_fee'] = array(
+                'mode' => $mode,
+                'basis' => $basis,
+                'value' => $value,
+                'refundable' => $refundable ? 1 : 0,
+                'quantity' => $quantity,
+                'unit_net' => $calculation->unitNet->decimal(),
+                'unit_tax' => $calculation->unitTax->decimal(),
+                'unit_gross' => $calculation->unitGross->decimal(),
+                'line_net' => $calculation->lineNet->decimal(),
+                'line_tax' => $calculation->lineTax->decimal(),
+                'line_gross' => $calculation->lineGross->decimal(),
+                'tax_code' => (string) $storedFee->tax_code,
+                'tax_name' => (string) $storedFee->tax_name,
+                'tax_type' => (string) $storedFee->tax_type,
+                'tax_rate' => $calculation->policy->rateDecimal(),
+            );
+            $subtotal = $subtotal->plus($calculation->lineNet);
+            $taxTotal = $taxTotal->plus($calculation->lineTax);
+            $grandTotal = $grandTotal->plus($calculation->lineGross);
+        }
+
         $quote['currency'] = $currency;
         $quote['subtotal_net'] = $subtotal->decimal();
         $quote['tax_total'] = $taxTotal->decimal();
         $quote['grand_total'] = $grandTotal->decimal();
 
         return $quote;
+    }
+
+
+    /**
+     * Apply the stored percent points using exact minor-unit arithmetic.
+     * 10.00 means 10%, consistent with the Point 4E quote contract.
+     */
+    private function percentageOfLockedFee(JemMoney $base, int $percentageHundredths): JemMoney
+    {
+        if ($percentageHundredths < 0) {
+            throw new InvalidArgumentException('Management fee percentage cannot be negative.');
+        }
+
+        $divisor = 10000;
+        $baseMinor = $base->minorUnits();
+        $negative = $baseMinor < 0;
+        $absolute = abs($baseMinor);
+        $wholeMultiplier = intdiv($percentageHundredths, $divisor);
+        $fractionMultiplier = $percentageHundredths % $divisor;
+        if ($wholeMultiplier !== 0 && $absolute > intdiv(PHP_INT_MAX, $wholeMultiplier)) {
+            throw new OverflowException('Management fee percentage exceeds the supported monetary range.');
+        }
+        $whole = $absolute * $wholeMultiplier;
+        $quotient = intdiv($absolute, $divisor);
+        if ($fractionMultiplier !== 0 && $quotient > intdiv(PHP_INT_MAX, $fractionMultiplier)) {
+            throw new OverflowException('Management fee percentage exceeds the supported monetary range.');
+        }
+        $fractionWhole = $quotient * $fractionMultiplier;
+        $remainderProduct = ($absolute % $divisor) * $fractionMultiplier;
+        $fractionRounded = intdiv($remainderProduct + intdiv($divisor, 2), $divisor);
+        if ($whole > PHP_INT_MAX - $fractionWhole
+            || $whole + $fractionWhole > PHP_INT_MAX - $fractionRounded) {
+            throw new OverflowException('Management fee percentage exceeds the supported monetary range.');
+        }
+        $result = $whole + $fractionWhole + $fractionRounded;
+
+        return JemMoney::fromMinorUnits($negative ? -$result : $result, $base->currency());
     }
 
     private function quoteItems(array $quote): array
