@@ -533,6 +533,7 @@ CREATE TABLE IF NOT EXISTS `#__jem_register` (
 CREATE TABLE IF NOT EXISTS `#__jem_register_items` (
     `id` bigint(20) unsigned NOT NULL auto_increment,
     `register_id` int(11) unsigned NOT NULL,
+    `registration_reference` varchar(28) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL,
     `registration_revision` int(10) unsigned NOT NULL,
     `line_number` int(10) unsigned NOT NULL,
     `line_kind` varchar(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
@@ -563,7 +564,8 @@ CREATE TABLE IF NOT EXISTS `#__jem_register_items` (
     UNIQUE KEY `idx_register_item_revision_line` (`register_id`, `registration_revision`, `line_number`),
     KEY `idx_register_item_price` (`event_price_id`),
     KEY `idx_register_item_pool` (`capacity_pool_id`),
-    KEY `idx_register_item_kind` (`line_kind`)
+    KEY `idx_register_item_kind` (`line_kind`),
+    KEY `idx_register_item_reference_revision` (`registration_reference`,`registration_revision`)
     ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `#__jem_register_capacity_allocations` (

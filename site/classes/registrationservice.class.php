@@ -621,6 +621,7 @@ final class JemRegistrationService
 
             $item = (object) array(
                 'register_id' => (int) $after->id,
+                'registration_reference' => (string) ($after->reference ?? ''),
                 'registration_revision' => (int) $after->revision,
                 'line_number' => $offset + 1,
                 'line_kind' => $kind,

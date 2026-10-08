@@ -57,7 +57,7 @@ class JemModelRegistrationhistoryentry extends BaseDatabaseModel
         if (!$item
             || (int) ($item->revision ?? 0) < 1
             || (int) ($item->registration_id ?? 0) < 1
-            || (int) ($item->current_registration_id ?? 0) !== (int) $item->registration_id) {
+            || (string) ($item->registration_reference ?? '') === '') {
             return array('lines' => array(), 'total' => null, 'currency' => '');
         }
 
@@ -78,8 +78,26 @@ class JemModelRegistrationhistoryentry extends BaseDatabaseModel
 
         $totalCents = 0;
         $currency = (string) $lines[0]->currency;
+        $historyReference = (string) $item->registration_reference;
+        $liveIdentityMatches = (int) ($item->current_registration_id ?? 0)
+            === (int) $item->registration_id;
+        $legacyLines = 0;
+        $verifiedLines = 0;
 
         foreach ($lines as $line) {
+            $lineReference = (string) ($line->registration_reference ?? '');
+
+            if ($lineReference === '') {
+                $legacyLines++;
+                if (!$liveIdentityMatches) {
+                    return array('lines' => array(), 'total' => null, 'currency' => '');
+                }
+            } elseif (hash_equals($historyReference, $lineReference)) {
+                $verifiedLines++;
+            } else {
+                return array('lines' => array(), 'total' => null, 'currency' => '');
+            }
+
             $amount = (string) $line->line_gross;
 
             if ((string) $line->currency !== $currency
@@ -93,6 +111,10 @@ class JemModelRegistrationhistoryentry extends BaseDatabaseModel
                 + (int) str_pad($parts[1] ?? '', 2, '0');
 
             $totalCents += $negative ? -$cents : $cents;
+        }
+
+        if ($legacyLines > 0 && $verifiedLines > 0) {
+            return array('lines' => array(), 'total' => null, 'currency' => '');
         }
 
         return array(

@@ -909,6 +909,30 @@ SQL;
                 $db->setQuery($db->replacePrefix($statement))->execute();
             }
 
+            // A5-483C1: preserve immutable commercial identity independently
+            // of the current registration. Legacy rows remain unverified.
+            $registerItemTable = $db->replacePrefix('#__jem_register_items');
+            $registerItemColumns = array_change_key_case(
+                $db->getTableColumns($registerItemTable, false),
+                CASE_LOWER
+            );
+
+            if (!isset($registerItemColumns['registration_reference'])) {
+                $db->setQuery(
+                    'ALTER TABLE ' . $db->quoteName('#__jem_register_items')
+                    . ' ADD COLUMN ' . $db->quoteName('registration_reference')
+                    . ' VARCHAR(28) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL'
+                    . ' AFTER ' . $db->quoteName('register_id')
+                )->execute();
+            }
+
+            $this->ensurePricingIndex(
+                $db,
+                '#__jem_register_items',
+                'idx_register_item_reference_revision',
+                array('registration_reference', 'registration_revision')
+            );
+
             $profileColumns = array_change_key_case(
                 $db->getTableColumns($db->replacePrefix('#__jem_venue_capacity_profiles'), false),
                 CASE_LOWER
