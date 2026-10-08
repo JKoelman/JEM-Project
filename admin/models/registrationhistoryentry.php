@@ -46,6 +46,67 @@ class JemModelRegistrationhistoryentry extends BaseDatabaseModel
         return (array) $db->loadObjectList();
     }
 
+    /**
+     * Read stored commercial lines for the selected history revision.
+     * Never substitute the current revision or recalculate event prices.
+     */
+    public function getCommercialSnapshot()
+    {
+        $item = $this->getItem();
+
+        if (!$item
+            || (int) ($item->revision ?? 0) < 1
+            || (int) ($item->registration_id ?? 0) < 1
+            || (int) ($item->current_registration_id ?? 0) !== (int) $item->registration_id) {
+            return array('lines' => array(), 'total' => null, 'currency' => '');
+        }
+
+        $db = $this->getDatabase();
+        $query = $db->getQuery(true)
+            ->select('*')
+            ->from($db->quoteName('#__jem_register_items'))
+            ->where($db->quoteName('register_id') . ' = ' . (int) $item->registration_id)
+            ->where($db->quoteName('registration_revision') . ' = ' . (int) $item->revision)
+            ->order($db->quoteName('line_number') . ' ASC');
+
+        $db->setQuery($query);
+        $lines = (array) $db->loadObjectList();
+
+        if (!$lines) {
+            return array('lines' => array(), 'total' => null, 'currency' => '');
+        }
+
+        $totalCents = 0;
+        $currency = (string) $lines[0]->currency;
+
+        foreach ($lines as $line) {
+            $amount = (string) $line->line_gross;
+
+            if ((string) $line->currency !== $currency
+                || !preg_match('/^-?\d+(?:\.\d{1,2})?$/', $amount)) {
+                return array('lines' => array(), 'total' => null, 'currency' => '');
+            }
+
+            $negative = strpos($amount, '-') === 0;
+            $parts = explode('.', ltrim($amount, '-'));
+            $cents = ((int) $parts[0] * 100)
+                + (int) str_pad($parts[1] ?? '', 2, '0');
+
+            $totalCents += $negative ? -$cents : $cents;
+        }
+
+        return array(
+            'lines' => $lines,
+            'total' => sprintf(
+                '%s%d.%02d',
+                $totalCents < 0 ? '-' : '',
+                intdiv(abs($totalCents), 100),
+                abs($totalCents) % 100
+            ),
+            'currency' => $currency,
+        );
+    }
+
     private function baseQuery()
     {
         $db = $this->getDatabase();

@@ -17,6 +17,7 @@ class JemViewRegistrationhistoryentry extends JemAdminView
 {
     public $item;
     public $timeline;
+    public $commercialSnapshot;
 
     public function display($tpl = null)
     {
@@ -26,6 +27,7 @@ class JemViewRegistrationhistoryentry extends JemAdminView
 
         $this->item = $this->get('Item');
         $this->timeline = $this->get('Timeline');
+        $this->commercialSnapshot = $this->get('CommercialSnapshot');
         if (!$this->item) {
             throw new Exception(Text::_('COM_JEM_REGISTRATION_HISTORY_ENTRY_NOT_FOUND'), 404);
         }

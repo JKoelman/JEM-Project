@@ -75,6 +75,53 @@ $changed = is_array($changed) ? $changed : array();
         </div>
     </div>
 
+    <section class="card mb-4"
+        data-jem-history-commercial-snapshot
+        data-registration-revision="<?php echo (int) $this->item->revision; ?>">
+        <div class="card-header">
+            <strong>Historical commercial snapshot — revision <?php echo (int) $this->item->revision; ?></strong>
+        </div>
+        <div class="card-body">
+            <?php $snapshot = $this->commercialSnapshot; ?>
+            <?php if (empty($snapshot['lines']) || $snapshot['total'] === null) : ?>
+                <p data-jem-history-commercial-unavailable>
+                    Historical commercial lines are unavailable for this revision.
+                </p>
+            <?php else : ?>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Commercial line</th>
+                                <th>Quantity</th>
+                                <th>Net</th>
+                                <th>Tax</th>
+                                <th>Gross</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($snapshot['lines'] as $line) : ?>
+                                <tr data-jem-history-commercial-line-kind="<?php echo $this->escape($line->line_kind); ?>">
+                                    <td><?php echo $this->escape($line->item_name); ?></td>
+                                    <td><?php echo (int) $line->quantity; ?></td>
+                                    <td><?php echo $this->escape($line->currency . ' ' . $line->line_net); ?></td>
+                                    <td><?php echo $this->escape($line->currency . ' ' . $line->line_tax); ?></td>
+                                    <td><?php echo $this->escape($line->currency . ' ' . $line->line_gross); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <p>
+                    <strong>Historical grand total:</strong>
+                    <span data-jem-history-commercial-grand-total>
+                        <?php echo $this->escape($snapshot['currency'] . ' ' . $snapshot['total']); ?>
+                    </span>
+                </p>
+            <?php endif; ?>
+        </div>
+    </section>
+
     <h2><?php echo Text::_('COM_JEM_REGISTRATION_HISTORY_TIMELINE'); ?></h2>
     <div class="table-responsive">
         <table class="table table-striped">
