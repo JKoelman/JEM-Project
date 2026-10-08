@@ -242,11 +242,18 @@ $wa->addInlineScript('
                             <?php else : ?>
                                 <ul class="list-unstyled text-start mb-1">
                                     <?php foreach ($orderLines as $line) : ?>
-                                        <li>
-                                            <strong><?php echo (int) $line->quantity; ?>&times;</strong>
-                                            <?php echo $this->escape($line->item_name); ?>
-                                            <?php if (!empty($line->pool_name)) : ?>
-                                                <small class="text-muted">&middot; <?php echo $this->escape($line->pool_name); ?></small>
+                                        <?php $lineKind = (string) ($line->line_kind ?? 'admission'); ?>
+                                        <li data-jem-commercial-line-kind="<?php echo $this->escape($lineKind); ?>"
+                                            data-calculation-mode="<?php echo $this->escape((string) ($line->calculation_mode ?? '')); ?>"
+                                            data-calculation-basis="<?php echo $this->escape((string) ($line->calculation_basis ?? '')); ?>">
+                                            <?php if ($lineKind === 'management_fee') : ?>
+                                                <strong><?php echo Text::_('COM_JEM_PRICED_REGISTRATION_MANAGEMENT_FEE'); ?></strong>
+                                            <?php else : ?>
+                                                <strong><?php echo (int) $line->quantity; ?>&times;</strong>
+                                                <?php echo $this->escape($line->item_name); ?>
+                                                <?php if (!empty($line->pool_name)) : ?>
+                                                    <small class="text-muted">&middot; <?php echo $this->escape($line->pool_name); ?></small>
+                                                <?php endif; ?>
                                             <?php endif; ?>
                                             <span class="text-nowrap">&mdash; <?php echo $this->escape(JemMoney::formatDecimal((string) $line->line_gross, (string) $line->currency, $moneyLocale)); ?></span>
                                         </li>
