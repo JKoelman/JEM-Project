@@ -249,9 +249,18 @@ final class JemPricedRegistrationService
         $after->subtotal_net = (string) $quote['subtotal_net'];
         $after->discount_total = '0.00';
         $after->tax_total = (string) $quote['tax_total'];
-        $after->management_fee_net = '0.00';
-        $after->management_fee_tax = '0.00';
-        $after->management_fee_gross = '0.00';
+        $managementFee = is_array($quote['management_fee'] ?? null)
+            ? $quote['management_fee']
+            : null;
+        $after->management_fee_net = $managementFee
+            ? (string) ($managementFee['line_net'] ?? '0.00')
+            : '0.00';
+        $after->management_fee_tax = $managementFee
+            ? (string) ($managementFee['line_tax'] ?? '0.00')
+            : '0.00';
+        $after->management_fee_gross = $managementFee
+            ? (string) ($managementFee['line_gross'] ?? '0.00')
+            : '0.00';
         $after->grand_total = (string) $quote['grand_total'];
         $after->payment_state = null;
         $after->external_payment_reference = null;
@@ -402,7 +411,7 @@ final class JemPricedRegistrationService
 
     private function quoteItems(array $quote): array
     {
-        return array_map(static function (array $line) use ($quote): object {
+        $items = array_map(static function (array $line) use ($quote): object {
             return (object) array(
                 'line_kind' => 'admission',
                 'event_price_id' => (int) $line['event_price_id'],
@@ -436,6 +445,44 @@ final class JemPricedRegistrationService
                 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
             );
         }, (array) $quote['lines']);
+
+        $fee = is_array($quote['management_fee'] ?? null)
+            ? $quote['management_fee']
+            : null;
+        if ($fee !== null && (string) ($fee['line_gross'] ?? '0.00') !== '0.00') {
+            $mode = (string) ($fee['mode'] ?? '');
+            $basis = (string) ($fee['basis'] ?? '');
+            $items[] = (object) array(
+                'line_kind' => 'management_fee',
+                'event_price_id' => null,
+                'capacity_pool_id' => null,
+                'item_code' => 'management_fee',
+                'item_name' => 'Management fee',
+                'item_description' => '',
+                'quantity' => max(1, (int) ($fee['quantity'] ?? 1)),
+                'currency' => (string) $quote['currency'],
+                'price_includes_tax' => $basis === 'gross' ? 1 : 0,
+                'unit_net' => (string) ($fee['unit_net'] ?? '0.00'),
+                'unit_tax' => (string) ($fee['unit_tax'] ?? '0.00'),
+                'unit_gross' => (string) ($fee['unit_gross'] ?? '0.00'),
+                'line_net' => (string) ($fee['line_net'] ?? '0.00'),
+                'line_tax' => (string) ($fee['line_tax'] ?? '0.00'),
+                'line_gross' => (string) ($fee['line_gross'] ?? '0.00'),
+                'tax_code' => (string) ($fee['tax_code'] ?? ''),
+                'tax_name' => (string) ($fee['tax_name'] ?? ''),
+                'tax_type' => (string) ($fee['tax_type'] ?? ''),
+                'tax_rate' => (string) ($fee['tax_rate'] ?? '0.00'),
+                'calculation_mode' => $mode,
+                'calculation_value' => isset($fee['value']) ? (string) $fee['value'] : null,
+                'calculation_basis' => $basis,
+                'condition_snapshot' => json_encode(array(
+                    'schema' => 'jem-management-fee/v1',
+                    'refundable' => !empty($fee['refundable']) ? 1 : 0,
+                ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+            );
+        }
+
+        return $items;
     }
 
     private function loadRegistrationForUpdate(int $eventId, int $userId, int $registerId): ?object
