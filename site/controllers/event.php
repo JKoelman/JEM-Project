@@ -623,7 +623,7 @@ class JemControllerEvent extends JemControllerForm
         $app->setUserState($errorKey, null);
 
         try {
-            $quote = (new JemPricingQuoteService(
+            $quote = (new JemPricedRegistrationService(
                 Factory::getContainer()->get('DatabaseDriver')
             ))->quote($eventId, $selections, $context);
             $quote['operation_reference'] = JemRegistrationIdentity::generateOperationReference();
