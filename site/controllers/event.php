@@ -18,6 +18,7 @@ use Joomla\Utilities\ArrayHelper;
 
 require_once (JPATH_COMPONENT_SITE.'/classes/controller.form.class.php');
 require_once (JPATH_COMPONENT_SITE.'/classes/registrationidentity.class.php');
+require_once (JPATH_COMPONENT_SITE.'/classes/pricedregistration.class.php');
 
 /**
  * Event Controller
@@ -632,6 +633,119 @@ class JemControllerEvent extends JemControllerForm
         }
 
         $this->setRedirect(Route::_(JemHelperRoute::getEventRoute($eventId), false));
+        $this->redirect();
+    }
+
+    /**
+     * Confirm a priced-event quote and persist its immutable commercial order.
+     *
+     * Browser totals are deliberately ignored. The submitted selection is
+     * recalculated under the pricing/inventory lock and must match the quote
+     * fingerprint that was shown to the booking holder.
+     */
+    public function pricingconfirm()
+    {
+        Session::checkToken() or jexit('Invalid Token');
+
+        $app = Factory::getApplication();
+        $input = $app->getInput();
+        $user = JemFactory::getUser();
+        $eventId = $input->getInt('rdid', 0);
+
+        if ((int) $user->get('id') < 1) {
+            throw new Exception(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+        }
+
+        $model = $this->getModel('Event', 'JemModel');
+        $event = $model->getItem($eventId);
+        if (!$event) {
+            throw new Exception(Text::_('COM_JEM_EVENT_ERROR_EVENT_NOT_FOUND'), 404);
+        }
+
+        if (!in_array((string) ($event->pricing_mode ?? 'classic'), array('single', 'multiple', 'priced'), true)
+            || !JemFeaturePolicy::current()->allows(JemFeaturePolicy::FEATURE_PRICING)) {
+            throw new Exception(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+        }
+
+        $raw = (array) $input->post->get('price_quantity', array(), 'array');
+        $selections = array();
+        foreach ($raw as $priceId => $quantity) {
+            $priceId = (int) $priceId;
+            $quantity = is_scalar($quantity) ? trim((string) $quantity) : '';
+            if ($priceId < 1 || $quantity === '' || $quantity === '0') {
+                continue;
+            }
+            $selections[] = array(
+                'event_price_id' => $priceId,
+                'quantity' => $quantity,
+            );
+        }
+
+        $expectedFingerprint = trim((string) $input->post->getString('quote_fingerprint', ''));
+        $operationReference = trim((string) $input->post->getString('operation_reference', ''));
+
+        $registration = $model->getUserRegistration($eventId);
+        $excludedRegisterId = is_object($registration) ? (int) ($registration->id ?? 0) : 0;
+        $context = JemPricingQuoteContext::fromIdentity(
+            $user,
+            (int) ($event->pricing_revision ?? 0),
+            $excludedRegisterId
+        );
+
+        try {
+            $options = array(
+                'actorId' => (int) $user->get('id'),
+                'source' => 'site.event.pricingconfirm',
+            );
+            if (is_object($registration)) {
+                $options['expectedRevision'] = max(1, (int) ($registration->revision ?? 1));
+            }
+
+            $result = (new JemPricedRegistrationService(
+                Factory::getContainer()->get('DatabaseDriver')
+            ))->confirm(
+                $eventId,
+                $selections,
+                $context,
+                $expectedFingerprint,
+                $operationReference,
+                array(
+                    'uip' => JemHelper::getStoredIP(),
+                ),
+                $options
+            );
+        } catch (JemPricingQuoteException | InvalidArgumentException | RuntimeException $error) {
+            $app->setUserState(
+                'com_jem.pricing.quote.error.' . $eventId,
+                $error->getMessage()
+            );
+            $this->setRedirect(Route::_(JemHelperRoute::getEventRoute($eventId), false), $error->getMessage(), 'error');
+            $this->redirect();
+            return;
+        }
+
+        JemHelper::updateWaitingList($eventId);
+
+        if (!empty($result->changed) && !empty($result->transition)) {
+            PluginHelper::importPlugin('jem');
+            PluginHelper::importPlugin('actionlog', 'jem');
+            $dispatcher = JemFactory::getDispatcher();
+            JemRegistrationTransition::dispatchStatusMail(
+                $dispatcher,
+                $result->after,
+                $result->transition,
+                false,
+                true
+            );
+            JemRegistrationTransition::dispatchAudit($dispatcher, array($result->transition));
+        }
+
+        Factory::getCache('com_jem')->clean();
+
+        $this->setRedirect(
+            Route::_(JemHelperRoute::getEventRoute($eventId), false),
+            Text::_('COM_JEM_REGISTRATION_THANKS_FOR_RESPONSE')
+        );
         $this->redirect();
     }
 
